@@ -1,14 +1,27 @@
 import processMessage from './processMessage.js';
 
 const pollMessages = (channel, client) => {
-  channel.initialized = false;
   let timer = null;
 
   const pollHandler = async () => {
+    if (channel._polling) {
+      return;
+    }
+    channel._polling = true;
+
     try {
       const { entity } = channel;
+      let messages;
 
-      const messages = await client.getMessages(entity, { limit: 5 });
+      if (!channel.initialized) {
+        messages = await client.getMessages(entity, { limit: 1 });
+      } else {
+        messages = await client.getMessages(entity, {
+          limit: 5,
+          minId: channel.lastMessageId + 1,
+        });
+      }
+
       if (messages.length > 0) {
         // On first run, just set the lastMessageId without processing (we only want new messages)
         if (!channel.initialized) {
@@ -17,14 +30,9 @@ const pollMessages = (channel, client) => {
           return;
         }
 
-        const messagesToProcess = messages.filter(
-          (msg) =>
-            !channel.lastMessageId || msg.id.valueOf() > channel.lastMessageId
-        );
-
         channel.lastMessageId = messages[0].id.valueOf();
 
-        for (const message of messagesToProcess.reverse()) {
+        for (const message of messages.reverse()) {
           await processMessage(message, channel, 'poll');
         }
       } else {
@@ -38,10 +46,17 @@ const pollMessages = (channel, client) => {
       if (timer) {
         clearInterval(timer);
 
-        setTimeout(() => {
-          timer = pollMessages(channel, client);
-        }, 60 * 1000); // Retry after 1 minute
+        if (!channel._locked) {
+          channel._locked = true;
+          setTimeout(() => {
+            timer = pollMessages(channel, client);
+            channel.poller = timer;
+            channel._locked = false;
+          }, 60 * 1000); // Retry after 1 minute
+        }
       }
+    } finally {
+      channel._polling = false;
     }
   };
 
@@ -61,6 +76,9 @@ export default async function createChannel(name, client) {
       id: entity.id.valueOf(),
       name,
       entity,
+      initialized: false,
+      _locked: false,
+      _polling: false,
     };
 
     channel.poller = pollMessages(channel, client);
