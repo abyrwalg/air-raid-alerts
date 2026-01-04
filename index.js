@@ -6,11 +6,15 @@ import { TelegramClient, Api } from 'telegram';
 import readline from 'readline';
 import { primaryFilter, excludeFilter } from './config.js';
 import { generateResponse } from './openai.js';
+import createChannel from './helpers/createChannel.js';
 import notify from './notify.js';
 import routes from './routes.js';
 import qrcode from 'qrcode-terminal';
+import processMessage from './helpers/processMessage.js';
 
 dotenv.config({ path: '.env.local' });
+
+const channels = [];
 
 const app = express();
 app.use(express.json());
@@ -37,19 +41,18 @@ const session = new StringSession(existingSession);
 async function startListener(client) {
   console.log('Subscribing to channels...');
 
-  // Resolve channels to entity objects
-  const entities = [];
   for (const username of CHANNELS) {
     try {
-      const entity = await client.getEntity(username);
-      entities.push(entity);
-      console.log(`Listening to: @${username}`);
+      const channel = await createChannel(username, client);
+      if (channel) {
+        channels.push(channel);
+      }
     } catch (err) {
       console.error(`Failed to resolve channel ${username}:`, err);
     }
   }
 
-  const channelIds = entities.map((e) => e.id.valueOf());
+  const channelIds = channels.map((ch) => ch.id);
 
   // MAIN EVENT HANDLER
   client.addEventHandler(async (update) => {
@@ -80,24 +83,16 @@ async function startListener(client) {
       return;
     }
 
-    const channel = entities.find((e) => e.id.valueOf() === channelId);
-    const channelName = channel ? `@${channel.username}` : `ID ${channelId}`;
+    const channel = channels.find((ch) => ch.id === channelId);
 
+    // Process the message if it wasn't processed yet
     if (
-      new RegExp(primaryFilter).test(text) &&
-      !new RegExp(excludeFilter).test(text)
+      channel.lastMessageId &&
+      msg.id.valueOf() > channel.lastMessageId &&
+      channel.initialized
     ) {
-      console.log(`MATCHED MESSAGE FROM ${channelName}:`);
-      console.log(text);
-      console.log('Generating analysis...');
-      const analysis = await generateResponse(text);
-      console.log('Analysis Result:', analysis);
-      console.log('---------------------');
-      await notify(analysis);
-    } else {
-      console.log(`SKIPPED MESSAGE FROM ${channelName}:`);
-      console.log(text);
-      console.log('---------------------');
+      channel.lastMessageId = msg.id.valueOf();
+      await processMessage(msg, channel, 'realtime');
     }
   });
 
@@ -187,6 +182,9 @@ async function initTelegram() {
       const newSession = client.session.save();
       saveSessionToEnv(newSession);
     }
+
+    const user = await client.getMe();
+    console.log(`Logged in as ${user.firstName} (${user.id.valueOf()})`);
 
     console.log('Telegram client is ready.');
     return client;
