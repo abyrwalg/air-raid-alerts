@@ -18,7 +18,7 @@ const pollMessages = (channel, client) => {
       } else {
         messages = await client.getMessages(entity, {
           limit: 5,
-          minId: channel.lastMessageId + 1,
+          minId: channel.lastMessageId,
         });
       }
 
