@@ -35,8 +35,6 @@ const pollMessages = (channel, client) => {
         for (const message of messages.reverse()) {
           await processMessage(message, channel, 'poll');
         }
-      } else {
-        console.log(`No messages found in ${entity.username}`);
       }
     } catch (error) {
       console.error(
