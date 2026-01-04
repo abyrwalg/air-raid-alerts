@@ -14,15 +14,21 @@ function databaseInitialize() {
   if (messages === null) {
     messages = db.addCollection('messages');
   }
+
+  purgeOldMessages(2);
 }
 
 export function purgeOldMessages(days = 2) {
+  console.log(`Purging messages older than ${days} days...`);
   const messages = db.getCollection('messages');
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const cutoffIso = new Date(
+    Date.now() - days * 24 * 60 * 60 * 1000
+  ).toISOString();
 
   messages
     .chain()
-    .find({ createdAt: { $lt: cutoff } })
+    .find({ createdAt: { $lt: cutoffIso } })
     .remove();
 }
 
