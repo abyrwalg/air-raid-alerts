@@ -37,6 +37,10 @@ const pollMessages = (channel, client) => {
       );
       if (timer) {
         clearInterval(timer);
+
+        setTimeout(() => {
+          timer = pollMessages(channel, client);
+        }, 60 * 1000); // Retry after 1 minute
       }
     }
   };
@@ -53,8 +57,6 @@ export default async function createChannel(name, client) {
   try {
     const entity = await client.getEntity(name);
 
-    console.log(`Listening to: @${name}`);
-
     const channel = {
       id: entity.id.valueOf(),
       name,
@@ -62,6 +64,8 @@ export default async function createChannel(name, client) {
     };
 
     channel.poller = pollMessages(channel, client);
+
+    console.log(`Listening to: @${name}`);
 
     return channel;
   } catch (error) {
