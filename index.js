@@ -18,6 +18,9 @@ app.use(express.json());
 
 app.use('/', routes);
 
+const isPollingEnabled =
+  (process.env.ENABLE_CHANNEL_POLLING || '').toLowerCase() === 'true';
+
 const CHANNELS = process.env.TG_CHANNELS
   ? process.env.TG_CHANNELS.split(',')
       .map((v) => v.trim())
@@ -82,11 +85,13 @@ async function startListener(client) {
 
     const channel = channels.find((ch) => ch.id === channelId);
 
-    // Process the message if it wasn't processed yet
+    // If polling is enabled, process the message if it wasn't processed yet, and the channel is initialized
+    // If polling is disabled, process all incoming messages
     if (
-      channel.lastMessageId &&
-      msg.id.valueOf() > channel.lastMessageId &&
-      channel.initialized
+      (channel.lastMessageId &&
+        msg.id.valueOf() > channel.lastMessageId &&
+        channel.initialized) ||
+      !isPollingEnabled
     ) {
       channel.lastMessageId = msg.id.valueOf();
       await processMessage(msg, channel, 'realtime');

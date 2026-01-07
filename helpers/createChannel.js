@@ -1,5 +1,8 @@
 import processMessage from './processMessage.js';
 
+const isPollingEnabled =
+  (process.env.ENABLE_CHANNEL_POLLING || '').toLowerCase() === 'true';
+
 const pollMessages = (channel, client) => {
   let timer = null;
 
@@ -79,7 +82,9 @@ export default async function createChannel(name, client) {
       _polling: false,
     };
 
-    channel.poller = pollMessages(channel, client);
+    if (isPollingEnabled) {
+      channel.poller = pollMessages(channel, client);
+    }
 
     console.log(`Listening to: @${name}`);
 
