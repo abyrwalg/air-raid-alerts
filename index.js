@@ -1,13 +1,10 @@
 import fs from 'fs';
 import express from 'express';
 import dotenv from 'dotenv';
-import { StringSession } from 'telegram/sessions/index.js';
-import { TelegramClient, Api } from 'telegram';
+import { StringSession } from 'teleproto/sessions/index.js';
+import { TelegramClient, Api } from 'teleproto';
 import readline from 'readline';
-import { primaryFilter, excludeFilter } from './config.js';
-import { generateResponse } from './openai.js';
 import createChannel from './helpers/createChannel.js';
-import notify from './notify.js';
 import routes from './routes.js';
 import qrcode from 'qrcode-terminal';
 import processMessage from './helpers/processMessage.js';
