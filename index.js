@@ -29,7 +29,7 @@ const CHANNELS = process.env.TG_CHANNELS
 
 if (CHANNELS.length === 0) {
   console.warn(
-    'No TG_CHANNELS found in .env.local — no channels will be monitored.'
+    'No TG_CHANNELS found in .env.local — no channels will be monitored.',
   );
 }
 
@@ -166,7 +166,7 @@ async function initTelegram() {
             const url = `tg://login?token=${code.token.toString('base64url')}`;
             console.log('\nScan this QR in Telegram mobile:');
             console.log(
-              'Telegram → Settings → Devices → Link Desktop Device\n'
+              'Telegram → Settings → Devices → Link Desktop Device\n',
             );
             qrcode.generate(url, { small: true });
           },
@@ -176,7 +176,7 @@ async function initTelegram() {
             console.error('QR login error:', err);
             return true; // stop auth on error
           },
-        }
+        },
       );
 
       console.log('Logged in!');

@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { EdgeTTS } from 'edge-tts-universal';
+import { EdgeTTS } from 'node-edge-tts';
 import portAudio from 'naudiodon';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,7 +29,7 @@ async function streamToSpeaker(filePath) {
   return new Promise((resolve, reject) => {
     const devices = portAudio.getDevices();
     const bluetoothSpeaker = devices.find((d) =>
-      d.name.includes('soundcore Select 2S')
+      d.name.includes('soundcore Select 2S'),
     );
 
     if (!bluetoothSpeaker) {
@@ -44,7 +44,7 @@ async function streamToSpeaker(filePath) {
     const ffmpeg = spawn(
       'ffmpeg',
       ['-i', filePath, '-f', 's16le', '-ac', '2', '-ar', '44100', '-'],
-      { windowsHide: true }
+      { windowsHide: true },
     );
 
     ffmpeg.stderr.on('data', () => {}); // keep stderr drainable
@@ -77,8 +77,8 @@ async function streamToSpeaker(filePath) {
       if (code !== 0) {
         safeReject(
           new Error(
-            `FFmpeg exited with code ${code}, signal ${signal || 'none'}`
-          )
+            `FFmpeg exited with code ${code}, signal ${signal || 'none'}`,
+          ),
         );
       }
       // If code === 0, we *don't* resolve here; we wait for ao 'close'
@@ -125,25 +125,35 @@ async function streamToSpeaker(filePath) {
 }
 
 async function playTTS(text) {
+  let outputPath;
+
   try {
-    const tts = new EdgeTTS(text, 'ru-RU-SvetlanaNeural');
-
-    const { audio } = await tts.synthesize();
-
-    const buffer = Buffer.from(await audio.arrayBuffer());
+    const tts = new EdgeTTS({
+      voice: 'ru-RU-SvetlanaNeural',
+      lang: 'ru-RU',
+      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+    });
 
     const id = crypto.randomUUID();
     const chimePath = path.join(__dirname, 'chime.mp3');
-    const outputPath = path.join(__dirname, `output-${id}.mp3`);
+    outputPath = path.join(__dirname, `output-${id}.mp3`);
 
-    await fs.writeFile(outputPath, buffer);
+    await tts.ttsPromise(text, outputPath);
 
     await streamToSpeaker(chimePath);
     await streamToSpeaker(outputPath);
-
-    await fs.unlink(outputPath);
   } catch (error) {
     console.error('TTS Synthesis Error:', error);
+  } finally {
+    if (outputPath) {
+      try {
+        await fs.unlink(outputPath);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.error('Failed to cleanup TTS file:', err);
+        }
+      }
+    }
   }
 }
 
@@ -154,6 +164,9 @@ function queueSilencePlayback() {
   console.log('Queuing silence playback to keep speaker awake');
   return enqueue(() => streamToSpeaker(silencePath));
 }
-setInterval(() => {
-  queueSilencePlayback();
-}, 10 * 60 * 1000); // every 10 minutes
+setInterval(
+  () => {
+    queueSilencePlayback();
+  },
+  10 * 60 * 1000,
+); // every 10 minutes
