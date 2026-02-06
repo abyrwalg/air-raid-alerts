@@ -49,7 +49,6 @@ Distance rules (explicit):
 
 Important distances:
 - Cherkasy → Smila: 30 km (highest relevance)
-- Kropyvnytskyi (Кропивницький) → 80-90 km from Smila (always relevant)
 - Znamianka (Знам’янка) → ~95 km from Smila (always relevant)
 - Oleksandriya (Олександрія) → ~110 km from Smila (usually relevant)
 - Kremenchuk → Smila: ~120 km (ALWAYS potentially relevant)
