@@ -28,7 +28,7 @@ Priority rules:
 
 RELEVANCE GUIDELINES:
 
-Always relevant (even if location is far):
+Always relevant (regardless of location, unless it is a duplicate):
 - Any mention of cruise missiles (КР, Х-101, Х-55, Х-22, Х-32, Калібр).
 - Any mention of strategic aviation (Ту-95, Ту-160, Ту-22) taking off or airborne.
 
