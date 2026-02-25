@@ -11,7 +11,7 @@ const webhookUrl = process.env.HA_WEBHOOK_URL;
 export const shouldNotify = (analysis) => {
   if (!analysis || !analysis.relevant) {
     console.log(
-      'Risk is not relevant or analysis.relevant missing, notification skipped.'
+      'Risk is not relevant or analysis.relevant missing, notification skipped.',
     );
     return false;
   }
@@ -31,11 +31,11 @@ export const shouldNotify = (analysis) => {
 
     const isAllowedTime = isNowBetween(startTime, endTime);
 
-    if (isAllowedTime || analysis.threat_type === 'cruise_missile') {
+    if (isAllowedTime) {
       return true;
     } else {
       console.log(
-        'Current time is outside allowed notification window for medium risk, notification skipped.'
+        'Current time is outside allowed notification window for medium risk, notification skipped.',
       );
       return false;
     }

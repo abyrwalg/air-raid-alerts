@@ -30,7 +30,7 @@ describe('shouldTriggerWebhook', () => {
     expect(shouldNotify({ relevant: true, risk_level: 'medium' })).toBe(false);
   });
 
-  it('returns true for medium risk outside allowed time if threat is cruise missile', () => {
+  /*   it('returns true for medium risk outside allowed time if threat is cruise missile', () => {
     vi.setSystemTime(new Date('2025-02-01T23:30:00')); // outside 22:00
 
     expect(
@@ -40,5 +40,5 @@ describe('shouldTriggerWebhook', () => {
         threat_type: 'cruise_missile',
       })
     ).toBe(true);
-  });
+  }); */
 });

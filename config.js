@@ -28,16 +28,16 @@ Priority rules:
 
 RELEVANCE GUIDELINES:
 
-Always relevant (regardless of location, unless it is a duplicate):
+Highly relevant (unless it is a duplicate):
 - Any mention of cruise missiles (КР, Х-101, Х-55, Х-22, Х-32, Калібр).
 - Any mention of strategic aviation (Ту-95, Ту-160, Ту-22) taking off or airborne.
 
 Likely relevant:
 - Any missile or drone moving through central Ukraine.
-- Movement through Vinnytsia or Kirovohrad regions
+- Movement through Kirovohrad or Poltava regions
 - Movement of cruise missiles through Mykolaiv region (typical trajectory toward central Ukraine).
 
-Usually NOT relevant:
+NOT relevant:
 - Movement toward Kyiv, Brovary, or generally north.
 - Activity only in western Ukraine (Lviv, Volyn, Zakarpattia), unless direction changes toward central Ukraine.
 - Activity in Kyiv city or immediate surroundings.
@@ -46,14 +46,6 @@ Distance rules (explicit):
 - Anything within 120 km of Smila is ALWAYS relevant or potentially relevant.
 - 100-250 km: relevant if the object is moving toward Cherkasy region.
 - More than 250 km: relevant only for cruise missiles, strategic aviation, or clear movement toward central Ukraine.
-
-Important distances:
-- Cherkasy → Smila: 30 km (highest relevance)
-- Znamianka (Знам’янка) → ~95 km from Smila (always relevant)
-- Oleksandriya (Олександрія) → ~110 km from Smila (usually relevant)
-- Kremenchuk → Smila: ~120 km (ALWAYS potentially relevant)
-- Svitlovodsk (Світловодськ) → ~120 km (relevant if moving northwest or west)
-- Poltava → Smila: ~150 km (potentially relevant)
 
 If uncertain, set relevant: true and use risk_level: 'low' with a clear explanation in reason.
 
