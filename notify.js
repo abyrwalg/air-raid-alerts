@@ -7,8 +7,16 @@ import isNowBetween from './helpers/isNowBetween.js';
 dotenv.config({ path: '.env.local' });
 
 const webhookUrl = process.env.HA_WEBHOOK_URL;
+const logsWebhookUrl = process.env.HA_LOGS_WEBHOOK_URL;
 
 export const shouldNotify = (analysis) => {
+  // Log analysis
+  if (logsWebhookUrl && analysis) {
+    axios
+      .post(logsWebhookUrl, { text: JSON.stringify(analysis, null, 2) })
+      .catch((error) => console.error('Error triggering logs webhook:', error));
+  }
+
   if (!analysis || !analysis.relevant) {
     console.log(
       'Risk is not relevant or analysis.relevant missing, notification skipped.',

@@ -6,6 +6,7 @@ import { generateResponse } from './openai.js';
 import textToSpeech from './tts.js';
 import { primaryFilter, excludeFilter } from './config.js';
 import db from './db.js';
+// import notify from './notify.js';
 
 const router = express.Router();
 
@@ -37,9 +38,9 @@ router.post('/test', async (req, res) => {
 
     const analysis = await generateResponse(text);
 
-    //  await webhookTrigger(analysis);
-
-    // await textToSpeech(analysis.summary);
+    // notify(analysis).catch((error) => {
+    //   console.error('Error sending notification:', error);
+    // });
 
     return res.json({
       matched: true,
