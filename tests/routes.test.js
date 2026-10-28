@@ -62,6 +62,18 @@ describe('/test route context options', () => {
     });
   });
 
+  it('uses provider-neutral wording when either triage provider rejects', async () => {
+    evaluateMessage.mockResolvedValue({
+      triage: { status: 'rejected', probability: 0.1 },
+      analysis: null,
+    });
+    const response = await invokeTest({ text: 'current alert' });
+    expect(response.body).toMatchObject({ matched: true, skipped: true });
+    expect(response.body.message).toBe(
+      'Triage rejected the message — full analysis skipped.',
+    );
+  });
+
   it.each([
     [{ text: 'current alert', context: 5 }, 'context'],
     [{ text: 'current alert', ignoreContext: 'true' }, 'ignoreContext'],

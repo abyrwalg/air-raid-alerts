@@ -1,0 +1,36 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+body {
+  margin: 0;
+  padding: 2rem 1rem;
+}
+main {
+  max-width: 42rem;
+  margin: auto;
+  line-height: 1.6;
+}
+section {
+  border: 1px solid #888;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+#code {
+  font-size: 2rem;
+  letter-spacing: 0.15em;
+}
+[hidden] {
+  display: none !important;
+}

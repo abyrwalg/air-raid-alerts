@@ -1,44 +1,67 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { shouldNotify } from '../notify.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-describe('shouldTriggerWebhook', () => {
+const { post, envConfig, audioImported } = vi.hoisted(() => ({
+  post: vi.fn(),
+  envConfig: vi.fn(),
+  audioImported: vi.fn(),
+}));
+vi.mock('axios', () => ({ default: { post } }));
+vi.mock('dotenv', () => ({ default: { config: envConfig } }));
+vi.mock('../tts.js', () => {
+  audioImported();
+  return { default: vi.fn() };
+});
+import { shouldNotify } from '../helpers/shouldNotify.js';
+
+describe('pure notification policy', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.clearAllMocks();
+    vi.stubEnv('HA_LOGS_WEBHOOK_URL', 'https://logs.invalid/webhook');
+    vi.stubEnv('HA_WEBHOOK_URL', 'https://alerts.invalid/webhook');
   });
-
   afterEach(() => {
-    vi.useRealTimers();
+    expect(post).not.toHaveBeenCalled();
+    expect(envConfig).not.toHaveBeenCalled();
+    expect(audioImported).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 
-  it('returns false when not relevant', () => {
-    expect(shouldNotify({ relevant: false })).toBe(false);
-  });
+  it.each([
+    undefined,
+    null,
+    { relevant: false },
+    { relevant: true, risk_level: 'none' },
+    { relevant: true, risk_level: 'low' },
+    { relevant: true, risk_level: 'unknown' },
+  ])(
+    'rejects irrelevant, low-risk, or unsupported analyses without effects',
+    (analysis) => {
+      expect(shouldNotify(analysis)).toBe(false);
+    },
+  );
 
-  it('returns true for high risk', () => {
-    expect(shouldNotify({ relevant: true, risk_level: 'high' })).toBe(true);
-  });
-
-  it('returns true for medium risk inside allowed time', () => {
-    vi.setSystemTime(new Date('2025-02-01T09:00:00')); // 09:00 → inside 08:00–22:00
-
-    expect(shouldNotify({ relevant: true, risk_level: 'medium' })).toBe(true);
-  });
-
-  it('returns false for medium risk outside allowed time', () => {
-    vi.setSystemTime(new Date('2025-02-01T23:30:00')); // outside 22:00
-
-    expect(shouldNotify({ relevant: true, risk_level: 'medium' })).toBe(false);
-  });
-
-  /*   it('returns true for medium risk outside allowed time if threat is cruise missile', () => {
-    vi.setSystemTime(new Date('2025-02-01T23:30:00')); // outside 22:00
-
+  it('allows high risk regardless of time, without sending anything', () => {
     expect(
-      shouldNotify({
-        relevant: true,
-        risk_level: 'medium',
-        threat_type: 'cruise_missile',
-      })
+      shouldNotify(
+        { relevant: true, risk_level: 'high' },
+        new Date('2025-02-01T23:30:00'),
+      ),
     ).toBe(true);
-  }); */
+  });
+
+  it.each([
+    ['07:59', false],
+    ['08:00', true],
+    ['09:00', true],
+    ['21:59', true],
+    ['22:00', false],
+    ['23:30', false],
+  ])('evaluates medium risk at %s without effects', (time, expected) => {
+    expect(
+      shouldNotify(
+        { relevant: true, risk_level: 'medium' },
+        new Date(`2025-02-01T${time}:00`),
+      ),
+    ).toBe(expected);
+  });
 });

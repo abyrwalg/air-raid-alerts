@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "vitest",
     "dev": "nodemon ./app",
@@ -12,17 +15,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@openai/codex": "0.165.0",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "lokijs": "^1.5.12",
     "naudiodon": "^2.3.6",
     "node-edge-tts": "^1.2.9",
+    "open": "10.2.0",
     "openai": "^6.9.1",
     "qrcode-terminal": "^0.12.0",
     "teleproto": "^1.228.5"
   },
   "devDependencies": {
+    "nock": "14.0.10",
     "nodemon": "^3.1.11",
     "vitest": "^3.2.4"
   }

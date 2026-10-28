@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prompt, threatAssessmentRules, triageTimeoutMs } from '../config.js';
+import { buildTriageInput, triageInstructions } from '../providers/triage.js';
 
 const { post, create, insert, storedMessages } = vi.hoisted(() => ({
   post: vi.fn(),
@@ -45,7 +46,10 @@ const analysis = {
 
 async function loadWithTriage(enabled) {
   vi.resetModules();
-  vi.stubEnv('ENABLE_OPENAI_TRIAGE', enabled ? 'true' : 'false');
+  vi.stubEnv('OPENAI_API_KEY', 'test-key');
+  vi.stubEnv('ANALYSIS_PROVIDER', 'openai');
+  vi.stubEnv('TRIAGE_PROVIDER', 'openai');
+  vi.stubEnv('TRIAGE_ENABLED', enabled ? 'true' : 'false');
   return import('../openai.js');
 }
 
@@ -89,6 +93,16 @@ describe('Decisions API triage', () => {
 
     const request = post.mock.calls[0][1];
     const question = request.body.questions[0];
+    expect(question.instructions).toBe(triageInstructions);
+    const expectedContext = storedMessages
+      .map(
+        (message) =>
+          `${new Date(message.createdAt).toISOString()}: ${message.input}`,
+      )
+      .join('\n\n');
+    expect(request.body.input[0].content[0].text).toBe(
+      buildTriageInput('current alert', expectedContext),
+    );
     expect(question).toMatchObject({
       type: 'predicate',
       name: 'worth_full_analysis',
@@ -98,10 +112,8 @@ describe('Decisions API triage', () => {
       'CURRENT MESSAGE TO EVALUATE, using RECENT CONTEXT as directed',
       'Return true when the evidence supports medium/high risk',
       'a plausible medium/high assessment needs further analysis to resolve',
-      'Return false when the message clearly falls within low or none risk',
+      'Return false when the message falls within low or none risk',
       'Mere relevance or hypothetical danger is not sufficient to proceed',
-      'This is a routing decision, not the final assessment',
-      'A message that passes may still receive a low-risk result after full analysis',
     ]) {
       expect(question.instructions).toContain(clause);
     }

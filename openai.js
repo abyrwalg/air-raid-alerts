@@ -1,30 +1,12 @@
-import dotenv from 'dotenv';
-import OpenAI from 'openai';
-
-dotenv.config({ path: '.env.local' });
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  // baseURL: 'https://openrouter.ai/api/v1',
-});
-
-import {
-  schema,
-  prompt,
-  threatAssessmentRules,
-  triageQuestionName,
-  triageThreshold,
-  triageTimeoutMs,
-} from './config.js';
+import { getAIConfig, validateAICredentials } from './aiConfig.js';
+import { analyzeWithOpenAI, evaluateTriage } from './providers/openai.js';
+import { parseAnalysis } from './providers/validateAnalysis.js';
 import db from './db.js';
-
-const isTriageEnabled =
-  (process.env.ENABLE_OPENAI_TRIAGE || '').trim().toLowerCase() === 'true';
 
 let queue = Promise.resolve();
 
 function enqueue(taskFn) {
-  const run = queue.then(() => taskFn());
+  const run = queue.then(taskFn);
   queue = run.catch(() => {});
   return run;
 }
@@ -41,96 +23,51 @@ function getRecentContext(messages) {
     .join('\n\n');
 }
 
-async function generateResponseWithContext(message, messages, context) {
-  const response = await openai.chat.completions.create({
-    model: 'gpt-6-luna',
-    messages: [
-      { role: 'system', content: prompt },
-      {
-        role: 'user',
-        content: `RECENT CONTEXT (previous messages):\n\n${context || '(none)'}\n\nCURRENT MESSAGE TO ANALYZE:\n\n${new Date().toISOString()}: ${message}`,
-      },
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'ThreatAnalysis', schema },
-    },
-  });
-  const parsedResult = JSON.parse(response.choices[0].message.content);
-  if (parsedResult.relevant && parsedResult.risk_level !== 'none') {
+async function generateResponseWithContext(message, messages, context, config) {
+  const content = `RECENT CONTEXT (previous messages):\n\n${context || '(none)'}\n\nCURRENT MESSAGE TO ANALYZE:\n\n${new Date().toISOString()}: ${message}`;
+  let output;
+  if (config.analysisProvider === 'codex') {
+    const { getCodexService } = await import('./codex/service.js');
+    output = await getCodexService().analyze(content);
+  } else {
+    output = await analyzeWithOpenAI(content, config);
+  }
+  const result = parseAnalysis(output);
+  if (result.relevant && result.risk_level !== 'none') {
     messages.insert({
       input: message,
-      response: parsedResult,
+      response: result,
       createdAt: new Date(),
     });
   }
-  return parsedResult;
-}
-
-async function evaluateTriage(message, context) {
-  const response = await openai.post('/decisions', {
-    timeout: triageTimeoutMs,
-    maxRetries: 0,
-    body: {
-      model: 'gpt-6-luna',
-      input: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text: `THREAT ASSESSMENT RULES:\n${threatAssessmentRules}\n\nRECENT CONTEXT (previous messages):\n${context || '(none)'}\n\nCURRENT MESSAGE TO EVALUATE:\n${message}`,
-            },
-          ],
-        },
-      ],
-      questions: [
-        {
-          type: 'predicate',
-          name: triageQuestionName,
-          instructions: `Use the THREAT ASSESSMENT RULES supplied in the input to assess the CURRENT MESSAGE TO EVALUATE, using RECENT CONTEXT as directed.
-
-Does this message warrant full structured analysis?
-
-Return true when the evidence supports medium/high risk, or when a plausible medium/high assessment needs further analysis to resolve. Return false when the message falls within low or none risk. Mere relevance or hypothetical danger is not sufficient to proceed.`,
-        },
-      ],
-    },
-  });
-  const answer = response.answers?.find(
-    (item) => item.name === triageQuestionName,
-  );
-  if (
-    !answer ||
-    answer.type !== 'predicate' ||
-    !Number.isFinite(answer.probability) ||
-    answer.probability < 0 ||
-    answer.probability > 1
-  ) {
-    throw new Error(
-      'Decisions API returned a missing or invalid triage predicate.',
-    );
-  }
-  return answer.probability;
+  return result;
 }
 
 export async function generateResponse(message) {
   return enqueue(async () => {
+    const config = getAIConfig();
+    validateAICredentials(config);
     try {
       const messages = db.getCollection('messages');
       return await generateResponseWithContext(
         message,
         messages,
         getRecentContext(messages),
+        config,
       );
-    } catch (error) {
-      console.error('Error generating response from OpenAI:', error);
+    } catch {
+      // Provider errors can embed requests or secrets; do not log raw SDK errors.
+      console.error(
+        `Error generating response from ${config.analysisProvider}. Check authentication, model access, and connectivity.`,
+      );
     }
   });
 }
 
 export async function evaluateMessage(message, options = {}) {
   return enqueue(async () => {
+    const config = getAIConfig();
+    validateAICredentials(config);
     const messages = db.getCollection('messages');
     const context = options.ignoreContext
       ? ''
@@ -138,32 +75,47 @@ export async function evaluateMessage(message, options = {}) {
         ? options.context
         : getRecentContext(messages);
     let triage = {
-      enabled: isTriageEnabled,
+      enabled: config.triageEnabled,
       status: 'disabled',
       probability: null,
     };
-    if (isTriageEnabled) {
+    if (config.triageEnabled) {
       try {
-        const probability = await evaluateTriage(message, context);
+        let probability;
+        if (config.triageProvider === 'codex') {
+          const { getCodexService } = await import('./codex/service.js');
+          probability = await getCodexService().evaluateTriage(
+            message,
+            context,
+          );
+        } else {
+          probability = await evaluateTriage(message, context, config);
+        }
         triage = { enabled: true, status: 'evaluated', probability };
-        if (probability < triageThreshold) {
+        if (probability < config.triageThreshold) {
           return { triage: { ...triage, status: 'rejected' }, analysis: null };
         }
-      } catch (error) {
+      } catch {
         triage = { enabled: true, status: 'error_fallback', probability: null };
         console.error(
-          'Decisions API triage failed; continuing with full analysis:',
-          error,
+          `${config.triageProvider} triage failed; continuing with the configured analysis provider.`,
         );
       }
     }
     try {
       return {
         triage,
-        analysis: await generateResponseWithContext(message, messages, context),
+        analysis: await generateResponseWithContext(
+          message,
+          messages,
+          context,
+          config,
+        ),
       };
-    } catch (error) {
-      console.error('Error generating response from OpenAI:', error);
+    } catch {
+      console.error(
+        `Error generating response from ${config.analysisProvider}. Check authentication, model access, and connectivity${config.analysisProvider === 'codex' ? '; sign in at /auth/codex if needed' : ''}.`,
+      );
       return { triage, analysis: undefined };
     }
   });

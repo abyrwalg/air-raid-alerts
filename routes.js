@@ -53,8 +53,7 @@ router.post('/test', async (req, res) => {
         input: text,
         triage,
         skipped: true,
-        message:
-          'Decisions API triage rejected the message — full analysis skipped.',
+        message: 'Triage rejected the message — full analysis skipped.',
       });
     }
 

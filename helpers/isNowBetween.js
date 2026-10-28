@@ -1,4 +1,4 @@
-export default function isNowBetween(start, end) {
+export default function isNowBetween(start, end, now = new Date()) {
   const toMinutes = (t) => {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + m;
@@ -7,7 +7,6 @@ export default function isNowBetween(start, end) {
   const startMin = toMinutes(start);
   const endMin = toMinutes(end);
 
-  const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
 
   if (startMin <= endMin) {

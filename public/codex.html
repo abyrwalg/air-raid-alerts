@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codex sign-in · Air Raid Alerts</title>
+    <link rel="stylesheet" href="/auth/codex/style.css" />
+    <script src="/auth/codex/app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Codex sign-in</h1>
+      <p>
+        Connect Air Raid Alerts to Codex using your ChatGPT account. Credentials
+        stay on this computer.
+      </p>
+      <p id="provider"></p>
+      <p id="status" role="status" aria-live="polite">Checking connection…</p>
+      <section id="device" hidden>
+        <h2>Authorize this app</h2>
+        <p>
+          Open the authorization page, sign in, and enter this one-time code:
+        </p>
+        <p><strong id="code"></strong></p>
+        <p>
+          <a id="authorize" target="_blank" rel="noopener noreferrer"
+            >Open OpenAI authorization</a
+          >
+        </p>
+        <p id="expiry"></p>
+        <p>
+          If device authorization is unavailable, enable it in your ChatGPT
+          security settings and retry.
+        </p>
+      </section>
+      <div class="actions">
+        <button id="login" disabled>Sign in with ChatGPT</button>
+        <button id="cancel" hidden>Cancel</button>
+        <button id="logout" hidden>Sign out</button>
+        <button id="refresh">Refresh status</button>
+      </div>
+      <p>
+        Signing in does not change the configured analysis or triage provider.
+        Codex-backed requests use this ChatGPT session; OpenAI-backed requests
+        use the separately configured API key.
+      </p>
+      <p>
+        Sign-out removes this app's local Codex session, not other Codex
+        installations or your ChatGPT browser session.
+      </p>
+      <p>
+        If this page opened during startup, normal operation stays paused until
+        sign-in succeeds. It then starts automatically; later sign-out does not
+        pause the running app.
+      </p>
+      <p>This prototype is not a substitute for official air-raid warnings.</p>
+    </main>
+  </body>
+</html>

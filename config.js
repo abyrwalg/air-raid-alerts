@@ -45,6 +45,7 @@ Clearly distinguish reported facts from uncertainty.`;
 
 export const schema = {
   type: 'object',
+  additionalProperties: false,
   properties: {
     relevant: { type: 'boolean' },
     risk_level: {

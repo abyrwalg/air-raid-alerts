@@ -28,7 +28,7 @@ export default async function processMessage(message, channel, source) {
       console.log('Triage Result:', triage);
       if (triage.status === 'rejected') {
         console.log(
-          'Skipped full analysis: Decisions API probability of warranting full threat analysis below threshold.',
+          'Skipped full analysis: triage probability of warranting full threat analysis below threshold.',
         );
         console.log('---------------------');
         return;
