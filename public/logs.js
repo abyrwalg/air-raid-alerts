@@ -1,3 +1,5 @@
+import { readApiResponse } from './logs-api.js';
+
 const form = document.querySelector('#filters');
 const entries = document.querySelector('#entries');
 const notice = document.querySelector('#notice');
@@ -25,12 +27,10 @@ function date(value) {
 async function load() {
   setNotice('Loading request logs…');
   try {
-    const response = await fetch(`/logs/api/ai-logs?${params()}`, {
+    const response = await fetch(`/api/ai-logs?${params()}`, {
       headers: { Accept: 'application/json' },
     });
-    if (!response.ok)
-      throw new Error((await response.json()).error || 'Unable to load logs.');
-    const data = await response.json();
+    const data = await readApiResponse(response, 'Unable to load logs');
     entries.replaceChildren();
     document.querySelector('#count').textContent = `${data.total} total`;
     document.querySelector('#page-label').textContent =
@@ -119,9 +119,11 @@ function payload(title, value) {
 async function showDetail(id) {
   selectedId = id;
   try {
-    const response = await fetch(`/logs/api/ai-logs/${encodeURIComponent(id)}`);
-    if (!response.ok) throw new Error('Unable to load request details.');
-    const item = await response.json();
+    const response = await fetch(`/api/ai-logs/${encodeURIComponent(id)}`);
+    const item = await readApiResponse(
+      response,
+      'Unable to load request details',
+    );
     detail.replaceChildren();
     const header = document.createElement('div');
     header.className = 'detail-head';

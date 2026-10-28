@@ -13,6 +13,7 @@ import {
   initializeAiLogs,
 } from '../aiLogs/runtime.js';
 import aiLogRoutes, { aiLogApiRouter } from '../aiLogs/routes.js';
+import { readApiResponse } from '../public/logs-api.js';
 
 const directories = [];
 async function temporaryFile() {
@@ -114,6 +115,33 @@ describe('local AI log storage', () => {
     });
   });
 
+  it('explains non-JSON and malformed API responses without leaking their bodies', async () => {
+    const htmlResponse = {
+      ok: false,
+      status: 404,
+      headers: { get: () => 'text/html; charset=utf-8' },
+      text: async () => '<html>private server page</html>',
+    };
+    await expect(
+      readApiResponse(htmlResponse, 'Unable to load logs'),
+    ).rejects.toThrow('HTTP 404 with a non-JSON response');
+    await expect(
+      readApiResponse(htmlResponse, 'Unable to load logs'),
+    ).rejects.not.toThrow('private server page');
+    await expect(
+      readApiResponse(
+        {
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => {
+            throw new Error('bad json');
+          },
+        },
+        'Unable to load logs',
+      ),
+    ).rejects.toThrow('returned invalid JSON');
+  });
+
   it('keeps provider execution independent from log-storage failures', async () => {
     const errors = vi.fn();
     const recorder = new AiLogRecorder({
@@ -164,6 +192,20 @@ describe('local AI log storage', () => {
       durationMs: 10,
     });
     const app = express();
+    const viewerScript = await readFile(
+      new URL('../public/logs.js', import.meta.url),
+      'utf8',
+    );
+    expect(viewerScript).toContain('fetch(`/api/ai-logs?${params()}`');
+    expect(viewerScript).toContain(
+      'fetch(`/api/ai-logs/${encodeURIComponent(id)}`)',
+    );
+    expect(viewerScript).not.toContain('/logs/api/ai-logs');
+    const viewerHtml = await readFile(
+      new URL('../public/logs.html', import.meta.url),
+      'utf8',
+    );
+    expect(viewerHtml).toContain('type="module"');
     app.use('/logs', aiLogRoutes);
     app.use('/api/ai-logs', aiLogApiRouter);
     const server = createServer(app);
