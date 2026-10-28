@@ -6,9 +6,13 @@ import { evaluateMessage } from './openai.js';
 import textToSpeech from './tts.js';
 import { primaryFilter, excludeFilter } from './config.js';
 import db from './db.js';
+import aiLogRoutes, { aiLogApiRouter } from './aiLogs/routes.js';
 // import notify from './notify.js';
 
 const router = express.Router();
+
+router.use('/logs', aiLogRoutes);
+router.use('/api/ai-logs', aiLogApiRouter);
 
 // Simple health check
 router.get('/', (req, res) => {

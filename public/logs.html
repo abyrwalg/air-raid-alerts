@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>AI request logs</title>
+    <link rel="stylesheet" href="/logs/style.css" />
+    <link rel="stylesheet" href="/logs/preview.css" />
+    <script src="/logs/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LOCAL INSPECTION</p>
+        <h1>AI request logs</h1>
+        <p class="muted">OpenAI and Codex inference history</p>
+      </div>
+      <button id="refresh" class="button">Refresh</button>
+    </header>
+    <main>
+      <form id="filters" class="filters" aria-label="Filter request logs">
+        <label
+          >Search<input
+            name="search"
+            type="search"
+            placeholder="Search prompts and responses"
+        /></label>
+        <label
+          >Provider<select name="provider">
+            <option value="">All providers</option>
+            <option>openai</option>
+            <option>codex</option>
+          </select></label
+        >
+        <label
+          >Task<select name="task">
+            <option value="">All tasks</option>
+            <option>analysis</option>
+            <option>triage</option>
+          </select></label
+        >
+        <label
+          >Status<select name="status">
+            <option value="">All statuses</option>
+            <option>success</option>
+            <option>error</option>
+            <option>in_progress</option>
+            <option>interrupted</option>
+          </select></label
+        >
+        <label
+          >Model<input name="model" type="search" placeholder="Any model"
+        /></label>
+        <label>From<input name="from" type="date" /></label>
+        <label>To<input name="to" type="date" /></label>
+        <button class="button secondary" type="reset">Clear filters</button>
+      </form>
+      <p id="notice" class="notice" role="status" aria-live="polite">
+        Loading request logs…
+      </p>
+      <section
+        id="workspace"
+        class="workspace"
+        aria-label="AI request log browser"
+      >
+        <div id="list-pane" class="list-pane">
+          <div class="list-heading">
+            <h2>Requests</h2>
+            <span id="count" class="muted"></span>
+          </div>
+          <div id="entries" class="entries"></div>
+          <nav class="pagination" aria-label="Request pages">
+            <button id="previous" class="button secondary">Previous</button
+            ><span id="page-label" class="muted"></span
+            ><button id="next" class="button secondary">Next</button>
+          </nav>
+        </div>
+        <article id="detail" class="detail" aria-live="polite">
+          <div class="placeholder">
+            <span class="spark">✳</span>
+            <h2>Select a request</h2>
+            <p class="muted">
+              Inspect its full prompts, response, and metadata.
+            </p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

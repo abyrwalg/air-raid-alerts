@@ -176,17 +176,20 @@ export class CodexService {
     });
   }
 
-  analyze(content) {
+  analyze(content, logging = {}) {
     return this.runStructured(content, {
       instructions: prompt,
       outputSchema: schema,
       model: this.config.analysisModel,
       timeoutMs: this.config.analysisTimeoutMs,
       task: 'analysis',
+      evaluationId: logging.evaluationId,
+      recorder: logging.recorder,
+      onAnalysisCall: logging.onAnalysisCall,
     });
   }
 
-  async evaluateTriage(message, context) {
+  async evaluateTriage(message, context, logging = {}) {
     const output = await this.runStructured(
       buildTriageInput(message, context),
       {
@@ -195,6 +198,9 @@ export class CodexService {
         model: this.config.triageModel,
         timeoutMs: this.config.triageTimeoutMs,
         task: 'triage',
+        evaluationId: logging.evaluationId,
+        recorder: logging.recorder,
+        onAnalysisCall: logging.onAnalysisCall,
       },
     );
     return parseCodexTriage(output);
@@ -202,12 +208,22 @@ export class CodexService {
 
   async runStructured(
     content,
-    { instructions, outputSchema, model, timeoutMs, task },
+    {
+      instructions,
+      outputSchema,
+      model,
+      timeoutMs,
+      task,
+      evaluationId,
+      recorder,
+      onAnalysisCall,
+    },
   ) {
     let threadId;
     let finish;
     let fail;
     let finalText;
+    let logCall;
     const completed = new Promise((resolve, reject) => {
       finish = resolve;
       fail = reject;
@@ -252,6 +268,14 @@ export class CodexService {
           'Codex is not signed in with ChatGPT. Open /auth/codex to sign in.',
         );
       }
+      logCall = recorder?.start({
+        evaluationId,
+        provider: 'codex',
+        task,
+        model,
+        request: { instructions, input: content, outputSchema, timeoutMs },
+      });
+      if (task === 'analysis') onAnalysisCall?.(logCall);
       const started = await this.client.request('thread/start', {
         model,
         modelProvider: 'openai',
@@ -269,7 +293,15 @@ export class CodexService {
         input: [{ type: 'text', text: content, text_elements: [] }],
         outputSchema,
       });
-      return await completed;
+      const result = await completed;
+      await logCall?.success({ text: result });
+      return result;
+    } catch (error) {
+      await logCall?.failure(
+        error,
+        finalText === undefined ? undefined : { text: finalText },
+      );
+      throw error;
     } finally {
       clearTimeout(timer);
       this.client.off('notification', onNotification);

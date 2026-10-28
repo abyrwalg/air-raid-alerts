@@ -7,6 +7,7 @@ import createChannel from './helpers/createChannel.js';
 import routes from './routes.js';
 import qrcode from 'qrcode-terminal';
 import processMessage from './helpers/processMessage.js';
+import { initializeAiLogs, closeAiLogs } from './aiLogs/runtime.js';
 
 dotenv.config({ path: '.env.local' });
 
@@ -206,6 +207,13 @@ export function start({ signal } = {}) {
 
 async function startNormalOperation(signal) {
   if (stopped || signal?.aborted) return;
+  try {
+    await initializeAiLogs();
+  } catch {
+    console.error(
+      'AI request logging could not initialize; continuing without local request history.',
+    );
+  }
   signal?.addEventListener(
     'abort',
     () => {
@@ -227,5 +235,9 @@ async function startNormalOperation(signal) {
 
 export async function stop() {
   stopped = true;
-  if (telegramClient) await telegramClient.disconnect();
+  try {
+    if (telegramClient) await telegramClient.disconnect();
+  } finally {
+    await closeAiLogs();
+  }
 }

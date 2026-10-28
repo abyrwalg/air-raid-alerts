@@ -1,0 +1,10 @@
+.entry-preview {
+  display: block;
+  overflow: hidden;
+  margin-top: 7px;
+  color: #aab7c8;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

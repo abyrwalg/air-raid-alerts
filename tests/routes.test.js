@@ -8,6 +8,7 @@ const { handlers, evaluateMessage } = vi.hoisted(() => ({
 vi.mock('express', () => ({
   default: {
     Router: () => ({
+      use: vi.fn(),
       get: vi.fn(),
       post: vi.fn((path, handler) => {
         handlers[path] = handler;

@@ -88,6 +88,9 @@ const applicationEnvNames = [
   'OPENAI_TRIAGE_THRESHOLD',
   'OPENAI_TRIAGE_TIMEOUT_MS',
   'CODEX_TRIAGE_TIMEOUT_MS',
+  'AI_LOGS_ENABLED',
+  'AI_LOG_RETENTION_DAYS',
+  'AI_LOGS_PATH',
 ];
 function clearApplicationEnv() {
   for (const name of applicationEnvNames) delete process.env[name];

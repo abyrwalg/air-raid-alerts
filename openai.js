@@ -2,6 +2,8 @@ import { getAIConfig, validateAICredentials } from './aiConfig.js';
 import { analyzeWithOpenAI, evaluateTriage } from './providers/openai.js';
 import { parseAnalysis } from './providers/validateAnalysis.js';
 import db from './db.js';
+import { randomUUID } from 'node:crypto';
+import { getAiLogRecorder } from './aiLogs/runtime.js';
 
 let queue = Promise.resolve();
 
@@ -23,16 +25,35 @@ function getRecentContext(messages) {
     .join('\n\n');
 }
 
-async function generateResponseWithContext(message, messages, context, config) {
+async function generateResponseWithContext(
+  message,
+  messages,
+  context,
+  config,
+  logging = {},
+) {
+  let analysisCall;
+  const callLogging = {
+    ...logging,
+    onAnalysisCall: (call) => {
+      analysisCall = call;
+    },
+  };
   const content = `RECENT CONTEXT (previous messages):\n\n${context || '(none)'}\n\nCURRENT MESSAGE TO ANALYZE:\n\n${new Date().toISOString()}: ${message}`;
   let output;
   if (config.analysisProvider === 'codex') {
     const { getCodexService } = await import('./codex/service.js');
-    output = await getCodexService().analyze(content);
+    output = await getCodexService().analyze(content, callLogging);
   } else {
-    output = await analyzeWithOpenAI(content, config);
+    output = await analyzeWithOpenAI(content, config, callLogging);
   }
-  const result = parseAnalysis(output);
+  let result;
+  try {
+    result = parseAnalysis(output);
+  } catch (error) {
+    await analysisCall?.annotate({ validationError: 'invalid_output' });
+    throw error;
+  }
   if (result.relevant && result.risk_level !== 'none') {
     messages.insert({
       input: message,
@@ -49,11 +70,14 @@ export async function generateResponse(message) {
     validateAICredentials(config);
     try {
       const messages = db.getCollection('messages');
+      const recorder = getAiLogRecorder();
+      const evaluationId = randomUUID();
       return await generateResponseWithContext(
         message,
         messages,
         getRecentContext(messages),
         config,
+        { recorder, evaluationId },
       );
     } catch {
       // Provider errors can embed requests or secrets; do not log raw SDK errors.
@@ -69,6 +93,8 @@ export async function evaluateMessage(message, options = {}) {
     const config = getAIConfig();
     validateAICredentials(config);
     const messages = db.getCollection('messages');
+    const recorder = getAiLogRecorder();
+    const evaluationId = randomUUID();
     const context = options.ignoreContext
       ? ''
       : options.context !== undefined
@@ -84,12 +110,17 @@ export async function evaluateMessage(message, options = {}) {
         let probability;
         if (config.triageProvider === 'codex') {
           const { getCodexService } = await import('./codex/service.js');
-          probability = await getCodexService().evaluateTriage(
-            message,
-            context,
-          );
+          probability = recorder
+            ? await getCodexService().evaluateTriage(message, context, {
+                recorder,
+                evaluationId,
+              })
+            : await getCodexService().evaluateTriage(message, context);
         } else {
-          probability = await evaluateTriage(message, context, config);
+          probability = await evaluateTriage(message, context, config, {
+            recorder,
+            evaluationId,
+          });
         }
         triage = { enabled: true, status: 'evaluated', probability };
         if (probability < config.triageThreshold) {
@@ -110,6 +141,7 @@ export async function evaluateMessage(message, options = {}) {
           messages,
           context,
           config,
+          { recorder, evaluationId },
         ),
       };
     } catch {

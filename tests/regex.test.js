@@ -34,6 +34,7 @@ describe('primaryFilter', () => {
     '1 група КР через Миколаївщину, вектор Баштанський район',
     'Шахед рухається через Черкаську область',
     '❗️Повышенная угроза пусков ракет "Калибр" этой ночью. Оба ракетоносителя выходят из Цемесского залива',
+    '🏍 Реактивний БпЛА на півночі Кіровоградщини, курс н.п.Хмельове',
   ];
 
   const nonMatchCases = [
@@ -59,7 +60,7 @@ describe('primaryFilter', () => {
       expect(
         new RegExp(primaryFilter).test(text) &&
           !new RegExp(excludeFilter).test(text),
-        `Failed to match:\n${text}`
+        `Failed to match:\n${text}`,
       ).toBe(true);
     }
   });
@@ -69,7 +70,7 @@ describe('primaryFilter', () => {
       expect(
         new RegExp(primaryFilter).test(text) &&
           !new RegExp(excludeFilter).test(text),
-        `Incorrectly matched:\n${text}`
+        `Incorrectly matched:\n${text}`,
       ).toBe(false);
     }
   });

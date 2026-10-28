@@ -10,6 +10,8 @@ A Telegram-based threat analyzer for Smila / Cherkasy region, Ukraine. It filter
 - Independently selectable **analysis provider/model** and **triage provider/model**.
 - OpenAI API access or Codex using ChatGPT sign-in.
 - Local web-based Codex device authorization, connection status, cancellation, and sign-out.
+- Local OpenAI/Codex triage and analysis request history with a responsive web viewer.
+- Local OpenAI/Codex triage and analysis request history with a responsive web viewer.
 - Shared assessment rules, structured output validation, recent-message context, and serialized processing.
 - Home Assistant webhooks, notifications, and TTS.
 
@@ -103,7 +105,21 @@ The example file groups these separately from AI configuration:
 
 - **Telegram:** enablement defaults to true. Disabling it starts the HTTP endpoints without Telegram authentication or monitoring. Configure channels as comma-separated usernames, API credentials from https://my.telegram.org, an optional saved session, and optional polling. The app can save a Telegram session to the local environment file during Telegram login, as before.
 - **Notifications:** Home Assistant notification/log webhook URLs are optional. The runtime notifier logs each supplied analysis, including reports skipped for alerting. The notification decision itself performs no HTTP, audio, environment loading, or timer initialization. Webhook delivery and audio remain separate runtime effects.
-- **HTTP:** the port defaults to 4000. Keep the server private; the existing general endpoints are not a public authenticated API.
+- **HTTP:** the port defaults to 4000. Keep the server private; the existing general endpoints are not a public authenticated API. The AI log viewer/API is available at `/logs` and `/api/ai-logs` on that port.
+
+### AI request logs
+
+AI logs are enabled by default. Each OpenAI or Codex triage/analysis inference attempt records submitted prompts and schemas, provider/model, response when available, outcome, and duration. Provider usage and request IDs are included only when returned. Authentication/account traffic and known credential fields are excluded; raw provider error text is not retained. Invalid output remains visible in the captured response. Log storage failures are reported without stopping inference or notifications.
+
+| Setting                 | Purpose                                                         | Default        |
+| ----------------------- | --------------------------------------------------------------- | -------------- |
+| `AI_LOGS_ENABLED`       | Enable request recording and the viewer (`false` disables both) | `true`         |
+| `AI_LOG_RETENTION_DAYS` | Retain logs for this many days (integer 1–3650)                 | `30`           |
+| `AI_LOGS_PATH`          | JSON database file; parent directories are created              | `logs/ai.json` |
+
+Open `http://localhost:4000/logs` locally, or use the server's LAN IP and configured port from another device. This feature has **no login**: anyone who can reach the HTTP server can read complete logged prompts, message text, context, and responses. Use only on a trusted private network, restrict access with the host firewall, and never forward the port or expose it to the internet. LAN access also makes the existing unauthenticated HTTP routes reachable; the Codex sign-in page remains loopback-only. The viewer is read-only and does not provide log deletion. The `logs/` data directory is Git-ignored. On Windows, protect the log file and backups with appropriate filesystem permissions.
+
+The viewer adapts to desktop and mobile widths. Search/filter logs, open an entry to inspect request/response JSON, and use paging to browse older entries. The API serves summaries at `/api/ai-logs` and individual details at `/api/ai-logs/:id`.
 
 ### Migration from previous environment names
 

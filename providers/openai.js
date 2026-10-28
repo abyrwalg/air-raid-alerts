@@ -18,26 +18,48 @@ function getClient(config) {
   return client;
 }
 
-export async function analyzeWithOpenAI(content, config) {
-  const response = await getClient(config).chat.completions.create(
-    {
-      model: config.analysisModel,
-      messages: [
-        { role: 'system', content: prompt },
-        { role: 'user', content },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'ThreatAnalysis', schema },
-      },
+export async function analyzeWithOpenAI(content, config, logging = {}) {
+  const request = {
+    model: config.analysisModel,
+    messages: [
+      { role: 'system', content: prompt },
+      { role: 'user', content },
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'ThreatAnalysis', schema },
     },
-    { timeout: config.analysisTimeoutMs, maxRetries: 0 },
-  );
-  return response.choices?.[0]?.message?.content;
+  };
+  const call = logging.recorder?.start({
+    evaluationId: logging.evaluationId,
+    provider: 'openai',
+    task: 'analysis',
+    model: config.analysisModel,
+    request: {
+      body: request,
+      timeout: config.analysisTimeoutMs,
+      maxRetries: 0,
+    },
+  });
+  logging.onAnalysisCall?.(call);
+  try {
+    const response = await getClient(config).chat.completions.create(request, {
+      timeout: config.analysisTimeoutMs,
+      maxRetries: 0,
+    });
+    await call?.success(response, {
+      usage: response.usage,
+      providerRequestId: response._request_id,
+    });
+    return response.choices?.[0]?.message?.content;
+  } catch (error) {
+    await call?.failure(error);
+    throw error;
+  }
 }
 
-export async function evaluateTriage(message, context, config) {
-  const response = await getClient(config).post('/decisions', {
+export async function evaluateTriage(message, context, config, logging = {}) {
+  const request = {
     timeout: config.triageTimeoutMs,
     maxRetries: 0,
     body: {
@@ -61,6 +83,22 @@ export async function evaluateTriage(message, context, config) {
         },
       ],
     },
+  };
+  const call = logging.recorder?.start({
+    evaluationId: logging.evaluationId,
+    provider: 'openai',
+    task: 'triage',
+    model: config.triageModel,
+    request: { path: '/decisions', ...request },
   });
-  return getTriageProbability(response);
+  let response;
+  try {
+    response = await getClient(config).post('/decisions', request);
+    const probability = getTriageProbability(response);
+    await call?.success(response, { probability });
+    return probability;
+  } catch (error) {
+    await call?.failure(error, response);
+    throw error;
+  }
 }
