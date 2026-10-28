@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { prompt, threatAssessmentRules, triageTimeoutMs } from '../config.js';
 
 const { post, create, insert, storedMessages } = vi.hoisted(() => ({
   post: vi.fn(),
@@ -74,6 +75,50 @@ describe('Decisions API triage', () => {
     expect(create.mock.calls[0][0].messages[1].content).toContain(
       'stored previous alert',
     );
+  });
+
+  // These are mocked request-contract checks, not live-model accuracy tests.
+  it('references shared assessment rules and sends only routing guidance without changing the main prompt', async () => {
+    post.mockResolvedValue({
+      answers: [
+        { type: 'predicate', name: 'worth_full_analysis', probability: 0.8 },
+      ],
+    });
+    const { evaluateMessage } = await loadWithTriage(true);
+    await evaluateMessage('current alert');
+
+    const request = post.mock.calls[0][1];
+    const question = request.body.questions[0];
+    expect(question).toMatchObject({
+      type: 'predicate',
+      name: 'worth_full_analysis',
+    });
+    for (const clause of [
+      'Use the THREAT ASSESSMENT RULES supplied in the input',
+      'CURRENT MESSAGE TO EVALUATE, using RECENT CONTEXT as directed',
+      'Return true when the evidence supports medium/high risk',
+      'a plausible medium/high assessment needs further analysis to resolve',
+      'Return false when the message clearly falls within low or none risk',
+      'Mere relevance or hypothetical danger is not sufficient to proceed',
+      'This is a routing decision, not the final assessment',
+      'A message that passes may still receive a low-risk result after full analysis',
+    ]) {
+      expect(question.instructions).toContain(clause);
+    }
+    // Detailed assessment rules belong in the shared input, not the question.
+    for (const rule of threatAssessmentRules
+      .split('\n')
+      .filter((line) => line.startsWith('- '))) {
+      expect(question.instructions).not.toContain(rule);
+    }
+    expect(request.body.input[0].content[0].text).toContain(
+      `THREAT ASSESSMENT RULES:\n${threatAssessmentRules}`,
+    );
+    expect(request).toMatchObject({ timeout: triageTimeoutMs, maxRetries: 0 });
+    expect(create.mock.calls[0][0].messages[0]).toEqual({
+      role: 'system',
+      content: prompt,
+    });
   });
 
   it('uses explicitly supplied context instead of stored history for triage and analysis', async () => {
@@ -161,6 +206,29 @@ describe('Decisions API triage', () => {
     expect(create).toHaveBeenCalledOnce();
     expect(create.mock.calls[0][0].messages[1].content).toContain(
       'current alert',
+    );
+  });
+
+  it('preserves a low-risk full analysis after triage passes', async () => {
+    post.mockResolvedValue({
+      answers: [
+        { type: 'predicate', name: 'worth_full_analysis', probability: 0.6 },
+      ],
+    });
+    const lowRiskAnalysis = { ...analysis, risk_level: 'low' };
+    create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(lowRiskAnalysis) } }],
+    });
+    const { evaluateMessage } = await loadWithTriage(true);
+    const result = await evaluateMessage('ambiguous alert');
+
+    expect(result.triage.status).toBe('evaluated');
+    expect(result.analysis).toEqual(lowRiskAnalysis);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: 'ambiguous alert',
+        response: lowRiskAnalysis,
+      }),
     );
   });
 

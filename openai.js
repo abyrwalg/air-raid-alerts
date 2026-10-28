@@ -88,8 +88,11 @@ async function evaluateTriage(message, context) {
         {
           type: 'predicate',
           name: triageQuestionName,
-          instructions:
-            'Under the threat assessment rules, does this current message warrant the full structured threat analysis? Return true for relevant danger information, updates, or uncertain potentially relevant threats; return false only for unrelated information, cancellation, or a confirmed duplicate with no meaningful new information.',
+          instructions: `Use the THREAT ASSESSMENT RULES supplied in the input to assess the CURRENT MESSAGE TO EVALUATE, using RECENT CONTEXT as directed.
+
+Does this message warrant full structured analysis?
+
+Return true when the evidence supports medium/high risk, or when a plausible medium/high assessment needs further analysis to resolve. Return false when the message falls within low or none risk. Mere relevance or hypothetical danger is not sufficient to proceed.`,
         },
       ],
     },

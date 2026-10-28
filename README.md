@@ -54,7 +54,7 @@ TG_SESSION=""
 - `ENABLE_TELEGRAM`: optional — defaults to `true`; set to `false` to run the HTTP endpoints without connecting to Telegram. Telegram credentials and channels are not required in this mode. HTTP endpoint behavior is unchanged.
 - `TG_API_ID` and `TG_API_HASH`: obtain from https://my.telegram.org
 - `OPENAI_API_KEY`: required for `openai.js` to call the OpenAI API
-- `ENABLE_OPENAI_TRIAGE`: optional — defaults to `false`; set to `true` to call the Decisions API before full analysis. Probabilities below `0.50` are skipped; `0.50` and above proceed. This initial threshold is not a validated safety guarantee.
+- `ENABLE_OPENAI_TRIAGE`: optional — defaults to `false`; set to `true` to call the Decisions API before full analysis. Triage filters clearly low-risk reports as well as unrelated information, cancellations, and confirmed duplicates. Probabilities below `0.50` are skipped; `0.50` and above proceed. This initial threshold is not a validated safety guarantee.
 - `HA_WEBHOOK_URL`: optional — if set, notifications will be sent to this Home Assistant webhook
 - `TG_SESSION`: after first-time login, the app will save `TG_SESSION` into `.env.local` so you can re-use session without QR/phone auth
 
@@ -87,9 +87,11 @@ Behavior
 - The app resolves channel usernames, subscribes to updates, and for each new message:
   - Applies `primaryFilter` and `excludeFilter` from `config.js` (Ukrainian/Russian-language regexes)
   - If matched and triage is enabled, calls `POST /v1/decisions` using `gpt-6-luna`; triage shares the threat-assessment rules and recent context used by full analysis
+  - Triage rejects clearly low-risk reports, not just irrelevant ones. It preserves explicit active warnings about Smila, credible potential danger, and active cruise missile reports in central Ukraine that could indicate medium risk without a confirmed route toward Smila. Borderline cases proceed when ambiguity could reasonably support medium/high risk; mere potential relevance is not enough.
   - Proceeds to full analysis at a triage probability of `0.50` or above; skips below that. Decisions errors, timeouts, or invalid answers fail open to full analysis.
-  - If approved, calls `generateResponse()` in `openai.js` to create a structured JSON analysis
+  - If approved, creates a structured JSON analysis through `evaluateMessage()` in `openai.js`. The main risk-assessment rules are unchanged; passing triage does not force a medium/high result, so some full analyses may still be low risk.
   - Calls `notify()` to forward notifications (and optionally sends to `HA_WEBHOOK_URL`)
+- Context storage is unchanged: triage-rejected reports are not analyzed or saved and will not appear in later database-derived context. Relevant low-risk results that reach full analysis are still saved. Filtering early reports can therefore remove context useful for later updates.
 
 Testing
 
@@ -98,6 +100,8 @@ Testing
 ```powershell
 npm test
 ```
+
+- Triage tests mock the API and verify the outgoing policy and routing behavior, not real-model classification accuracy. Compare triage decisions with full analyses on representative messages before relying on the tighter filter, especially cases rejected by triage that full analysis would rate medium/high.
 
 Important files
 
