@@ -442,6 +442,10 @@ describe('local AI log storage', () => {
     expect(viewerHtml).toContain('type="module"');
     expect(viewerHtml).toContain('/logs/theme-init.js');
     expect(viewerHtml).toContain('id="theme"');
+    expect(viewerHtml).toContain('id="codex-limits"');
+    expect(viewerScript).toContain("fetch('/api/ai-logs/codex-limits'");
+    expect(viewerScript).toContain('setInterval(() =>');
+    expect(viewerScript).toContain('if (!document.hidden) loadLimits()');
     const viewerStyles = await readFile(
       new URL('../public/logs.css', import.meta.url),
       'utf8',
@@ -449,6 +453,7 @@ describe('local AI log storage', () => {
     expect(viewerStyles).toContain(":root[data-theme='light']");
     expect(viewerStyles).toContain('--json-key:');
     expect(viewerStyles).toContain('--json-string:');
+    expect(viewerStyles).toContain('.limit-window progress');
     expect(viewerStyles).toContain('@media (prefers-color-scheme: light)');
     app.use('/logs', aiLogRoutes);
     app.use('/api/ai-logs', aiLogApiRouter);
@@ -473,6 +478,11 @@ describe('local AI log storage', () => {
       expect((await detail.json()).request.input).toBe('searchable prompt');
       const invalid = await fetch(`${base}/api/ai-logs?task=login`);
       expect(invalid.status).toBe(400);
+      const limitsWhenDisabled = await fetch(
+        `${base}/api/ai-logs/codex-limits`,
+      );
+      expect(limitsWhenDisabled.status).toBe(404);
+      expect(limitsWhenDisabled.headers.get('cache-control')).toBe('no-store');
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }

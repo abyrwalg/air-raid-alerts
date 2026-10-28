@@ -85,6 +85,50 @@ export class CodexService {
     return this.serializeAuth(() => this.readStatus({ refreshToken }));
   }
 
+  rateLimits() {
+    return this.serializeAuth(async () => {
+      if ((await this.readStatus()).status !== 'connected') return null;
+      const result = await this.client.request(
+        'account/rateLimits/read',
+        undefined,
+        5000,
+        { closeOnTimeout: false },
+      );
+      const limits = result?.rateLimits;
+      if (!limits || typeof limits !== 'object' || Array.isArray(limits))
+        return null;
+      const windows = [];
+      for (const [key, label] of [
+        ['primary', 'Short-term'],
+        ['secondary', 'Long-term'],
+      ]) {
+        const window = limits[key];
+        if (!window || typeof window !== 'object') continue;
+        const usedPercent = window.usedPercent;
+        const windowDurationMins = window.windowDurationMins;
+        const resetsAt = window.resetsAt;
+        if (
+          !Number.isFinite(usedPercent) ||
+          usedPercent < 0 ||
+          usedPercent > 100 ||
+          !Number.isFinite(windowDurationMins) ||
+          windowDurationMins <= 0 ||
+          !Number.isFinite(resetsAt)
+        )
+          continue;
+        const resetTimestamp = resetsAt > 1e12 ? resetsAt : resetsAt * 1000;
+        if (!Number.isFinite(new Date(resetTimestamp).getTime())) continue;
+        windows.push({
+          label,
+          usedPercent,
+          windowDurationMins,
+          resetsAt: new Date(resetTimestamp).toISOString(),
+        });
+      }
+      return windows.length ? windows : null;
+    });
+  }
+
   async readStatus({ refreshToken = false } = {}) {
     if (this.state.status === 'pending') return this.publicState();
     const { account } = await this.client.request('account/read', {

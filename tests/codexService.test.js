@@ -16,9 +16,12 @@ class FakeClient extends EventEmitter {
     this.cwd = 'isolated-workspace';
     this.child = {};
     this.account = null;
+    this.limits = null;
     this.counter = 0;
     this.request = vi.fn(async (method) => {
       if (method === 'account/read') return { account: this.account };
+      if (method === 'account/rateLimits/read')
+        return { rateLimits: this.limits };
       if (method === 'account/login/start')
         return {
           type: 'chatgptDeviceCode',
@@ -76,6 +79,58 @@ describe('Codex authentication lifecycle', () => {
     expect(client.request).toHaveBeenCalledWith('account/read', {
       refreshToken: true,
     });
+  });
+
+  it('returns validated quota windows for a connected ChatGPT account', async () => {
+    client.account = { type: 'chatgpt' };
+    client.limits = {
+      primary: {
+        usedPercent: 25,
+        windowDurationMins: 300,
+        resetsAt: 1_800_000_000,
+      },
+      secondary: {
+        usedPercent: 90,
+        windowDurationMins: 10080,
+        resetsAt: 1_800_000_000_000,
+      },
+      unknown: { usedPercent: 3 },
+    };
+    expect(await service.rateLimits()).toEqual([
+      {
+        label: 'Short-term',
+        usedPercent: 25,
+        windowDurationMins: 300,
+        resetsAt: new Date(1_800_000_000_000).toISOString(),
+      },
+      {
+        label: 'Long-term',
+        usedPercent: 90,
+        windowDurationMins: 10080,
+        resetsAt: new Date(1_800_000_000_000).toISOString(),
+      },
+    ]);
+    expect(client.request).toHaveBeenCalledWith(
+      'account/rateLimits/read',
+      undefined,
+      5000,
+      { closeOnTimeout: false },
+    );
+  });
+
+  it('returns unavailable when signed out or when reported windows are invalid', async () => {
+    expect(await service.rateLimits()).toBeNull();
+    expect(client.request).not.toHaveBeenCalledWith(
+      'account/rateLimits/read',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    client.account = { type: 'chatgpt' };
+    client.limits = {
+      primary: { usedPercent: 101, windowDurationMins: 5, resetsAt: 1000 },
+    };
+    expect(await service.rateLimits()).toBeNull();
   });
 
   it('reuses a saved ChatGPT session but not API-key authentication', async () => {

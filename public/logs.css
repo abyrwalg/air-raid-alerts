@@ -184,6 +184,61 @@ select:focus-visible {
 main {
   padding: 22px clamp(14px, 3vw, 42px);
 }
+.limits-panel {
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.limits-panel[hidden] {
+  display: none;
+}
+.limits-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.limits-heading h2,
+.limit-window h3 {
+  margin: 3px 0 0;
+}
+.limits-heading p {
+  margin: 0;
+}
+.limits-windows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 10px;
+}
+.limit-window {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.limit-window h3 {
+  color: var(--label);
+  font-size: 0.85rem;
+}
+.limit-window strong {
+  font-size: 1.25rem;
+}
+.limit-window progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}
+.limit-window p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .filters {
   display: grid;
   grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(110px, 1fr));

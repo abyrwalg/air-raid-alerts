@@ -8,10 +8,14 @@ const entries = document.querySelector('#entries');
 const notice = document.querySelector('#notice');
 const workspace = document.querySelector('#workspace');
 const detail = document.querySelector('#detail');
+const limitsPanel = document.querySelector('#codex-limits');
+const limitsWindows = document.querySelector('#limits-windows');
 const pageSize = 25;
 let page = 1;
 let selectedId = null;
 let timer;
+let limitsRequest = 0;
+let limitsLoading = false;
 
 function params() {
   const result = new URLSearchParams({ page, pageSize });
@@ -70,6 +74,56 @@ async function load() {
     setNotice(data.total ? '' : 'No requests match these filters.');
   } catch (error) {
     setNotice(error.message, true);
+  }
+}
+
+async function loadLimits() {
+  if (document.hidden || limitsLoading) return;
+  limitsLoading = true;
+  const requestId = ++limitsRequest;
+  try {
+    const response = await fetch('/api/ai-logs/codex-limits', {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Codex limits unavailable');
+    const data = await response.json();
+    if (requestId !== limitsRequest || document.hidden) return;
+    if (!Array.isArray(data.windows) || data.windows.length === 0) {
+      limitsPanel.hidden = true;
+      limitsWindows.replaceChildren();
+      return;
+    }
+    limitsWindows.replaceChildren();
+    for (const window of data.windows) {
+      const card = document.createElement('article');
+      card.className = 'limit-window';
+      const heading = document.createElement('h3');
+      heading.textContent = window.label;
+      const percent = document.createElement('strong');
+      percent.textContent = `${Math.round(100 - window.usedPercent)}% remaining`;
+      const progress = document.createElement('progress');
+      progress.max = 100;
+      progress.value = Math.max(0, Math.min(100, 100 - window.usedPercent));
+      progress.setAttribute('aria-label', `${heading.textContent} remaining`);
+      const meta = document.createElement('p');
+      const duration = window.windowDurationMins;
+      const durationLabel =
+        duration >= 60
+          ? `${duration / 60} hour${duration === 60 ? '' : 's'}`
+          : `${duration} minutes`;
+      const reset = new Date(window.resetsAt);
+      meta.textContent = `${durationLabel} window · resets ${Number.isNaN(reset.getTime()) ? '—' : reset.toLocaleString()}`;
+      card.append(heading, percent, progress, meta);
+      limitsWindows.append(card);
+    }
+    limitsPanel.hidden = false;
+  } catch {
+    if (requestId !== limitsRequest) return;
+    limitsPanel.hidden = true;
+    limitsWindows.replaceChildren();
+  } finally {
+    limitsLoading = false;
   }
 }
 
@@ -205,7 +259,10 @@ form.addEventListener('reset', () => {
   page = 1;
   setTimeout(load);
 });
-document.querySelector('#refresh').addEventListener('click', load);
+document.querySelector('#refresh').addEventListener('click', () => {
+  load();
+  loadLimits();
+});
 initializeTheme(document.querySelector('#theme'));
 document.querySelector('#previous').addEventListener('click', () => {
   page--;
@@ -216,3 +273,11 @@ document.querySelector('#next').addEventListener('click', () => {
   load();
 });
 load();
+loadLimits();
+setInterval(() => {
+  if (!document.hidden) loadLimits();
+}, 60_000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) loadLimits();
+  else limitsRequest++;
+});

@@ -110,6 +110,36 @@ describe('Codex app-server transport', () => {
     expect(client.pending.size).toBe(0);
   });
 
+  it('allows optional rate-limit timeouts without closing active Codex work', async () => {
+    await client.start();
+    vi.useFakeTimers();
+    const active = client.sendRequest('thread/start', {}, 30000);
+    const activeId = JSON.parse(
+      children[0].stdin.write.mock.calls.at(-1)[0],
+    ).id;
+    const limits = client.sendRequest(
+      'account/rateLimits/read',
+      undefined,
+      100,
+      {
+        closeOnTimeout: false,
+      },
+    );
+    const limitsId = JSON.parse(
+      children[0].stdin.write.mock.calls.at(-1)[0],
+    ).id;
+    const rejection = expect(limits).rejects.toThrow('timed out');
+    await vi.advanceTimersByTimeAsync(100);
+    await rejection;
+    expect(client.child).toBe(children[0]);
+    expect(children[0].kill).not.toHaveBeenCalled();
+    children[0].stdout.write(
+      `${JSON.stringify({ id: activeId, result: { thread: { id: 'still-running' } } })}\n`,
+    );
+    expect(await active).toEqual({ thread: { id: 'still-running' } });
+    expect(client.pending.has(limitsId)).toBe(false);
+  });
+
   it('rejects requests on process exit and can reconnect without stale events', async () => {
     await client.start();
     const result = client.request('account/read', {});

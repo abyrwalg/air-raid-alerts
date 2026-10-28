@@ -1,6 +1,7 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { getAiLogStore } from './runtime.js';
+import { localAuthGuard } from '../helpers/localAuthGuard.js';
 
 const router = express.Router();
 export const aiLogApiRouter = express.Router();
@@ -168,6 +169,25 @@ aiLogApiRouter.get('/', (req, res) => {
     total: filtered.length,
     pages: Math.ceil(filtered.length / pageSize),
   });
+});
+
+aiLogApiRouter.get('/codex-limits', localAuthGuard, async (req, res) => {
+  const store = getAiLogStore();
+  if (!store)
+    return res.status(503).json({ error: 'AI logs are not available.' });
+  try {
+    const [{ getAIConfig }, { getCodexService }] = await Promise.all([
+      import('../aiConfig.js'),
+      import('../codex/service.js'),
+    ]);
+    const config = getAIConfig();
+    if (!config.codexAuthEnabled) return res.sendStatus(404);
+    const windows = await getCodexService().rateLimits();
+    return res.json({ windows: windows || [] });
+  } catch {
+    // Optional account usage data is unavailable; never expose Codex errors.
+    return res.status(503).json({ error: 'Codex limits are unavailable.' });
+  }
 });
 
 aiLogApiRouter.get('/:id', (req, res) => {

@@ -119,7 +119,7 @@ AI logs are enabled by default. Each OpenAI or Codex triage/analysis inference a
 
 Open `http://localhost:4000/logs` locally, or use the server's LAN IP and configured port from another device. This feature has **no login**: anyone who can reach the HTTP server can read complete logged prompts, message text, context, and responses. Use only on a trusted private network, restrict access with the host firewall, and never forward the port or expose it to the internet. LAN access also makes the existing unauthenticated HTTP routes reachable; the Codex sign-in page remains loopback-only. The viewer is read-only and does not provide log deletion. The `logs/` data directory is Git-ignored. On Windows, protect the log file and backups with appropriate filesystem permissions.
 
-The viewer adapts to desktop and mobile widths. Search/filter logs, open an entry to inspect request/response JSON, and use paging to browse older entries. The API serves summaries at `/api/ai-logs` and individual details at `/api/ai-logs/:id`.
+The viewer adapts to desktop and mobile widths. Search/filter logs, open an entry to inspect request/response JSON, and use paging to browse older entries. The API serves summaries at `/api/ai-logs` and individual details at `/api/ai-logs/:id`. When the Codex setup UI is enabled and a ChatGPT Codex session is connected, the page also displays the quota windows Codex reports. These limits refresh when the page opens, with **Refresh**, every 60 seconds while the page is visible, and when returning to the page; the panel stays hidden if Codex is disconnected or the limit data is unavailable. Limits are optional account metadata and do not affect inference.
 
 ### Migration from previous environment names
 

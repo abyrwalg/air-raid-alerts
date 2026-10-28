@@ -196,7 +196,12 @@ export class CodexClient extends EventEmitter {
     this.child?.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
-  sendRequest(method, params, timeoutMs = 30000) {
+  sendRequest(
+    method,
+    params,
+    timeoutMs = 30000,
+    { closeOnTimeout = true } = {},
+  ) {
     return new Promise((resolve, reject) => {
       if (!this.child) {
         reject(new Error('Codex is disconnected. Please retry.'));
@@ -204,16 +209,20 @@ export class CodexClient extends EventEmitter {
       }
       const id = this.nextId++;
       const timer = setTimeout(() => {
-        this.close();
+        if (closeOnTimeout) this.close();
+        else {
+          this.pending.delete(id);
+          reject(new Error(`Codex ${method} timed out.`));
+        }
       }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer, method });
       this.write({ id, method, ...(params === undefined ? {} : { params }) });
     });
   }
 
-  async request(method, params, timeoutMs) {
+  async request(method, params, timeoutMs, options) {
     await this.start();
-    return this.sendRequest(method, params, timeoutMs);
+    return this.sendRequest(method, params, timeoutMs, options);
   }
 
   close() {
