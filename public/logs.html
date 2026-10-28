@@ -30,57 +30,68 @@
       </div>
     </header>
     <main>
-      <section
-        id="codex-limits"
-        class="limits-panel"
-        aria-labelledby="limits-title"
-        hidden
-      >
-        <div class="limits-heading">
-          <div>
-            <p class="eyebrow">CODEX ACCOUNT</p>
-            <h2 id="limits-title">Usage limits</h2>
-          </div>
-          <span class="muted">Updates every minute</span>
-        </div>
+      <details id="codex-limits" class="limits-panel" hidden>
+        <summary class="limits-heading">
+          <span class="limits-title">
+            <span class="eyebrow">CODEX ACCOUNT</span>
+            <span id="limits-title">Usage limits</span>
+          </span>
+          <span id="limits-summary" class="limits-summary"></span>
+          <span class="muted limits-updated">Updates every minute</span>
+        </summary>
         <div id="limits-windows" class="limits-windows"></div>
-      </section>
+      </details>
       <form id="filters" class="filters" aria-label="Filter request logs">
-        <label
-          >Search<input
-            name="search"
-            type="search"
-            placeholder="Search prompts and responses"
-        /></label>
-        <label
-          >Provider<select name="provider">
-            <option value="">All providers</option>
-            <option>openai</option>
-            <option>codex</option>
-          </select></label
-        >
-        <label
-          >Task<select name="task">
-            <option value="">All tasks</option>
-            <option>analysis</option>
-            <option>triage</option>
-          </select></label
-        >
-        <label
-          >Status<select name="status">
-            <option value="">All statuses</option>
-            <option>success</option>
-            <option>error</option>
-            <option>in_progress</option>
-            <option>interrupted</option>
-          </select></label
-        >
-        <label
-          >Model<input name="model" type="search" placeholder="Any model"
-        /></label>
-        <label>From<input name="from" type="date" /></label>
-        <label>To<input name="to" type="date" /></label>
-        <button class="button secondary" type="reset">Clear filters</button>
+        <div class="filter-toolbar">
+          <label class="search-filter"
+            >Search<input
+              name="search"
+              type="search"
+              placeholder="Search prompts and responses"
+          /></label>
+          <button
+            id="filters-toggle"
+            class="button secondary filters-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="advanced-filters"
+          >
+            Filters <span id="filter-count" class="filter-count"></span>
+          </button>
+        </div>
+        <div id="advanced-filters" class="advanced-filters" hidden>
+          <label
+            >Provider<select name="provider">
+              <option value="">All providers</option>
+              <option>openai</option>
+              <option>codex</option>
+            </select></label
+          >
+          <label
+            >Task<select name="task">
+              <option value="">All tasks</option>
+              <option>analysis</option>
+              <option>triage</option>
+            </select></label
+          >
+          <label
+            >Status<select name="status">
+              <option value="">All statuses</option>
+              <option>success</option>
+              <option>error</option>
+              <option>in_progress</option>
+              <option>interrupted</option>
+            </select></label
+          >
+          <label
+            >Model<input name="model" type="search" placeholder="Any model"
+          /></label>
+          <label>From<input name="from" type="date" /></label>
+          <label>To<input name="to" type="date" /></label>
+          <button class="button secondary clear-filters" type="reset">
+            Clear filters
+          </button>
+        </div>
       </form>
       <p id="notice" class="notice" role="status" aria-live="polite">
         Loading request logs…

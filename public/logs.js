@@ -10,6 +10,10 @@ const workspace = document.querySelector('#workspace');
 const detail = document.querySelector('#detail');
 const limitsPanel = document.querySelector('#codex-limits');
 const limitsWindows = document.querySelector('#limits-windows');
+const limitsSummary = document.querySelector('#limits-summary');
+const filtersToggle = document.querySelector('#filters-toggle');
+const advancedFilters = document.querySelector('#advanced-filters');
+const filterCount = document.querySelector('#filter-count');
 const pageSize = 25;
 let page = 1;
 let selectedId = null;
@@ -29,6 +33,16 @@ function setNotice(text, error = false) {
 }
 function date(value) {
   return value ? new Date(value).toLocaleString() : '—';
+}
+function updateFilterCount() {
+  const count = [...advancedFilters.querySelectorAll('input, select')].filter(
+    (control) => control.value,
+  ).length;
+  filterCount.textContent = count ? `(${count})` : '';
+  filtersToggle.setAttribute(
+    'aria-label',
+    `Filters${count ? `, ${count} active` : ''}`,
+  );
 }
 
 async function load() {
@@ -92,16 +106,20 @@ async function loadLimits() {
     if (!Array.isArray(data.windows) || data.windows.length === 0) {
       limitsPanel.hidden = true;
       limitsWindows.replaceChildren();
+      limitsSummary.textContent = '';
       return;
     }
     limitsWindows.replaceChildren();
+    const summaries = [];
     for (const window of data.windows) {
       const card = document.createElement('article');
       card.className = 'limit-window';
       const heading = document.createElement('h3');
       heading.textContent = window.label;
       const percent = document.createElement('strong');
-      percent.textContent = `${Math.round(100 - window.usedPercent)}% remaining`;
+      const remaining = Math.round(100 - window.usedPercent);
+      percent.textContent = `${remaining}% remaining`;
+      summaries.push(`${window.label}: ${remaining}% remaining`);
       const progress = document.createElement('progress');
       progress.max = 100;
       progress.value = Math.max(0, Math.min(100, 100 - window.usedPercent));
@@ -117,11 +135,13 @@ async function loadLimits() {
       card.append(heading, percent, progress, meta);
       limitsWindows.append(card);
     }
+    limitsSummary.textContent = summaries.join(' · ');
     limitsPanel.hidden = false;
   } catch {
     if (requestId !== limitsRequest) return;
     limitsPanel.hidden = true;
     limitsWindows.replaceChildren();
+    limitsSummary.textContent = '';
   } finally {
     limitsLoading = false;
   }
@@ -246,24 +266,35 @@ async function showDetail(id) {
   }
 }
 
+filtersToggle.addEventListener('click', () => {
+  const expanded = filtersToggle.getAttribute('aria-expanded') !== 'true';
+  filtersToggle.setAttribute('aria-expanded', String(expanded));
+  advancedFilters.hidden = !expanded;
+});
 form.addEventListener('input', () => {
+  updateFilterCount();
   page = 1;
   clearTimeout(timer);
   timer = setTimeout(load, 250);
 });
 form.addEventListener('change', () => {
+  updateFilterCount();
   page = 1;
   load();
 });
 form.addEventListener('reset', () => {
   page = 1;
-  setTimeout(load);
+  setTimeout(() => {
+    updateFilterCount();
+    load();
+  });
 });
 document.querySelector('#refresh').addEventListener('click', () => {
   load();
   loadLimits();
 });
 initializeTheme(document.querySelector('#theme'));
+updateFilterCount();
 document.querySelector('#previous').addEventListener('click', () => {
   page--;
   load();

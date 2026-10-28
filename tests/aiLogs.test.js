@@ -448,6 +448,28 @@ describe('local AI log storage', () => {
     expect(viewerHtml).toContain('/logs/theme-init.js');
     expect(viewerHtml).toContain('id="theme"');
     expect(viewerHtml).toContain('id="codex-limits"');
+    expect(viewerHtml).toContain(
+      '<details id="codex-limits" class="limits-panel" hidden>',
+    );
+    expect(viewerHtml).toContain('id="filters-toggle"');
+    expect(viewerHtml).toContain('aria-expanded="false"');
+    expect(viewerHtml).toContain(
+      'id="advanced-filters" class="advanced-filters" hidden',
+    );
+    expect(viewerHtml).toContain('name="search"');
+    expect(viewerScript).toContain(
+      "advancedFilters.querySelectorAll('input, select')",
+    );
+    expect(viewerScript).toContain(
+      "filtersToggle.setAttribute('aria-expanded', String(expanded))",
+    );
+    expect(viewerScript).toContain(
+      "filterCount.textContent = count ? `(${count})` : ''",
+    );
+    expect(viewerScript).toContain(
+      "limitsSummary.textContent = summaries.join(' · ')",
+    );
+    expect(viewerScript).not.toContain('limitsPanel.open =');
     expect(viewerScript).toContain("fetch('/api/ai-logs/codex-limits'");
     expect(viewerScript).toContain('setInterval(() =>');
     expect(viewerScript).toContain('if (!document.hidden) loadLimits()');
@@ -459,6 +481,10 @@ describe('local AI log storage', () => {
     expect(viewerStyles).toContain('--json-key:');
     expect(viewerStyles).toContain('--json-string:');
     expect(viewerStyles).toContain('.limit-window progress');
+    expect(viewerStyles).toContain('.advanced-filters[hidden]');
+    expect(viewerStyles).toContain(
+      '.limits-panel[open] .limits-heading::before',
+    );
     expect(viewerStyles).toContain('@media (prefers-color-scheme: light)');
     app.use('/logs', aiLogRoutes);
     app.use('/api/ai-logs', aiLogApiRouter);
