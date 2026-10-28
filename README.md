@@ -217,7 +217,7 @@ The existing test endpoint accepts a JSON body with text, optional context strin
 { "text": "Сміла уважно", "ignoreContext": true }
 ```
 
-An empty context string means no history. Test analyses are still saved, but the test endpoint does not send notifications. Root health, stored-message, webhook, and audio-test endpoints retain their existing behavior **after startup readiness**; before then they return the waiting/unavailable response described above.
+An empty context string means no history. Test requests still produce the usual AI request logs, but their analyses are not saved to message history and therefore cannot become database-derived context for later requests. The test endpoint does not send notifications. Root health, stored-message, webhook, and audio-test endpoints retain their existing behavior **after startup readiness**; before then they return the waiting/unavailable response described above.
 
 ```powershell
 npm test -- --run

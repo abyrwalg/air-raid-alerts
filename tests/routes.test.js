@@ -60,6 +60,20 @@ describe('/test route context options', () => {
     expect(evaluateMessage).toHaveBeenCalledWith('current alert', {
       context: 'caller context',
       ignoreContext: false,
+      persistHistory: false,
+    });
+  });
+
+  it('disables history persistence even when the request body includes that option', async () => {
+    await invokeTest({
+      text: 'current alert',
+      persistHistory: true,
+    });
+
+    expect(evaluateMessage).toHaveBeenCalledWith('current alert', {
+      context: undefined,
+      ignoreContext: undefined,
+      persistHistory: false,
     });
   });
 

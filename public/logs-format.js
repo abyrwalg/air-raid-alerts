@@ -56,8 +56,8 @@ export function formatRequest(request) {
     if (typeof text === 'string' && text.length) sections.push({ label, text });
   };
 
-  add('Instructions', request?.instructions);
   add('Input', request?.input);
+  add('Instructions', request?.instructions);
 
   const body = request?.body;
   for (const message of body?.messages ?? []) {

@@ -31,6 +31,7 @@ async function generateResponseWithContext(
   context,
   config,
   logging = {},
+  persistHistory = true,
 ) {
   let analysisCall;
   const callLogging = {
@@ -54,7 +55,7 @@ async function generateResponseWithContext(
     await analysisCall?.annotate({ validationError: 'invalid_output' });
     throw error;
   }
-  if (result.relevant && result.risk_level !== 'none') {
+  if (persistHistory && result.relevant && result.risk_level !== 'none') {
     messages.insert({
       input: message,
       response: result,
@@ -142,6 +143,7 @@ export async function evaluateMessage(message, options = {}) {
           context,
           config,
           { recorder, evaluationId },
+          options.persistHistory !== false,
         ),
       };
     } catch {

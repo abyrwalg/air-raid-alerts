@@ -160,6 +160,30 @@ describe('Decisions API triage', () => {
     expect(insert).toHaveBeenCalledOnce();
   });
 
+  it('does not persist test evaluations or expose them to later database context', async () => {
+    const { evaluateMessage } = await loadWithTriage(false);
+    const result = await evaluateMessage('test-only alert', {
+      context: 'caller context',
+      persistHistory: false,
+    });
+    await evaluateMessage('following normal alert');
+
+    expect(result.analysis).toEqual(analysis);
+    expect(insert).toHaveBeenCalledOnce();
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ input: 'following normal alert' }),
+    );
+    expect(create.mock.calls[0][0].messages[1].content).toContain(
+      'caller context',
+    );
+    expect(create.mock.calls[1][0].messages[1].content).toContain(
+      'stored previous alert',
+    );
+    expect(create.mock.calls[1][0].messages[1].content).not.toContain(
+      'test-only alert',
+    );
+  });
+
   it('supports empty context and gives ignoreContext precedence over supplied context', async () => {
     const { evaluateMessage } = await loadWithTriage(false);
     await evaluateMessage('first alert', { context: '' });

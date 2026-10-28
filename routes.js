@@ -49,6 +49,7 @@ router.post('/test', async (req, res) => {
     const { triage, analysis } = await evaluateMessage(text, {
       context,
       ignoreContext,
+      persistHistory: false,
     });
 
     if (triage.status === 'rejected') {
