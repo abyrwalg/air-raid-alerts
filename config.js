@@ -4,7 +4,7 @@ export const primaryFilter =
 export const excludeFilter =
   /(?<!\p{L})[КK]иїв(?!\p{L})|Мі?Г[-\s]|Черкаське|Кинджал|Драбів|Кинжал/giu;
 
-export const prompt = `You are a threat analysis system. Assess the potential missile or drone danger to Smila (Сміла/Смела), Ukraine, based on the CURRENT Ukrainian- or Russian-language message and RECENT CONTEXT.
+export const threatAssessmentRules = `You are a threat analysis system. Assess the potential missile or drone danger to Smila (Сміла/Смела), Ukraine, based on the CURRENT Ukrainian- or Russian-language message and RECENT CONTEXT.
 
 The CURRENT message is the primary source and overrides conflicting context. Use geographic knowledge, weapon type, reported locations, directions, and previous messages to assess potential danger. Never invent facts or present assumptions as confirmed trajectories.
 
@@ -27,6 +27,14 @@ DUPLICATES:
 Compare the CURRENT message with RECENT CONTEXT.
 If it describes the same event without meaningful new information, set relevant=false and risk_level="none".
 Changes in location, direction, threat type, or status count as new information.
+
+`;
+
+export const triageThreshold = 0.5;
+export const triageTimeoutMs = 8000;
+export const triageQuestionName = 'worth_full_analysis';
+
+export const prompt = `${threatAssessmentRules}
 
 OUTPUT:
 Return ONLY valid JSON matching the provided schema.

@@ -9,6 +9,7 @@
 - Monitors specified Telegram channels for new messages
 - Regex-based filtering tuned for Smila / Cherkasy region (see `config.js`)
 - Uses OpenAI to produce structured JSON analysis for each matched message
+- Optionally triages matched messages with the OpenAI Decisions API before full analysis
 - Sends notifications via webhook and other configured channels
 
 **Quick Links**
@@ -38,6 +39,7 @@ Configuration
 ```
 # Example .env.local
 ENABLE_TELEGRAM=true
+ENABLE_OPENAI_TRIAGE=false
 TG_CHANNELS=@channel1,@channel2
 TG_API_ID=123456
 TG_API_HASH=your_api_hash_here
@@ -52,6 +54,7 @@ TG_SESSION=""
 - `ENABLE_TELEGRAM`: optional — defaults to `true`; set to `false` to run the HTTP endpoints without connecting to Telegram. Telegram credentials and channels are not required in this mode. HTTP endpoint behavior is unchanged.
 - `TG_API_ID` and `TG_API_HASH`: obtain from https://my.telegram.org
 - `OPENAI_API_KEY`: required for `openai.js` to call the OpenAI API
+- `ENABLE_OPENAI_TRIAGE`: optional — defaults to `false`; set to `true` to call the Decisions API before full analysis. Probabilities below `0.50` are skipped; `0.50` and above proceed. This initial threshold is not a validated safety guarantee.
 - `HA_WEBHOOK_URL`: optional — if set, notifications will be sent to this Home Assistant webhook
 - `TG_SESSION`: after first-time login, the app will save `TG_SESSION` into `.env.local` so you can re-use session without QR/phone auth
 
@@ -78,9 +81,12 @@ npx nodemon index.js
 Behavior
 
 - Set `ENABLE_TELEGRAM=false` in `.env.local` to run in endpoint-only mode. The HTTP server and routes remain available, while Telegram authentication, channel monitoring, and polling are skipped. Endpoint-specific effects (such as `/tts` audio playback or `/hook` webhook requests) remain unchanged.
+- To manually test triage without starting Telegram, set `ENABLE_TELEGRAM=false`, `ENABLE_OPENAI_TRIAGE=true`, and a valid `OPENAI_API_KEY`, then submit a matching message to `/test`. Automated tests mock API and persistence; run them with `npm test -- --run` without launching `index.js`.
 - The app resolves channel usernames, subscribes to updates, and for each new message:
   - Applies `primaryFilter` and `excludeFilter` from `config.js` (Ukrainian/Russian-language regexes)
-  - If matched, calls `generateResponse()` in `openai.js` to create a structured JSON analysis
+  - If matched and triage is enabled, calls `POST /v1/decisions` using `gpt-6-luna`; triage shares the threat-assessment rules and recent context used by full analysis
+  - Proceeds to full analysis at a triage probability of `0.50` or above; skips below that. Decisions errors, timeouts, or invalid answers fail open to full analysis.
+  - If approved, calls `generateResponse()` in `openai.js` to create a structured JSON analysis
   - Calls `notify()` to forward notifications (and optionally sends to `HA_WEBHOOK_URL`)
 
 Testing

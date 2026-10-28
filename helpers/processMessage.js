@@ -1,5 +1,5 @@
 import { primaryFilter, excludeFilter } from '../config.js';
-import { generateResponse } from '../openai.js';
+import { evaluateMessage } from '../openai.js';
 import notify from '../notify.js';
 
 export default async function processMessage(message, channel, source) {
@@ -23,8 +23,16 @@ export default async function processMessage(message, channel, source) {
     ) {
       console.log(`MATCHED MESSAGE FROM ${channelName} (${source}):`);
       console.log(`${date}\n${text}`);
-      console.log('Generating analysis...');
-      const analysis = await generateResponse(text);
+      console.log('Evaluating message...');
+      const { triage, analysis } = await evaluateMessage(text);
+      console.log('Triage Result:', triage);
+      if (triage.status === 'rejected') {
+        console.log(
+          'Skipped full analysis: Decisions API relevance below threshold.',
+        );
+        console.log('---------------------');
+        return;
+      }
       console.log('Analysis Result:', analysis);
       console.log('---------------------');
       await notify(analysis);

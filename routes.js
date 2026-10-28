@@ -2,7 +2,7 @@ import express from 'express';
 
 import axios from 'axios';
 
-import { generateResponse } from './openai.js';
+import { evaluateMessage } from './openai.js';
 import textToSpeech from './tts.js';
 import { primaryFilter, excludeFilter } from './config.js';
 import db from './db.js';
@@ -36,7 +36,18 @@ router.post('/test', async (req, res) => {
       });
     }
 
-    const analysis = await generateResponse(text);
+    const { triage, analysis } = await evaluateMessage(text);
+
+    if (triage.status === 'rejected') {
+      return res.json({
+        matched: true,
+        input: text,
+        triage,
+        skipped: true,
+        message:
+          'Decisions API triage rejected the message — full analysis skipped.',
+      });
+    }
 
     // notify(analysis).catch((error) => {
     //   console.error('Error sending notification:', error);
@@ -45,6 +56,7 @@ router.post('/test', async (req, res) => {
     return res.json({
       matched: true,
       input: text,
+      triage,
       analysis,
     });
   } catch (err) {
