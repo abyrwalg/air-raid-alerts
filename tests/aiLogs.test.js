@@ -222,8 +222,8 @@ describe('local AI log storage', () => {
       );
     }
     expect(formatRequest(requests[0]).sections).toEqual([
-      { label: 'Instructions', text: `Rules\n\n${actualNewlines}` },
       { label: 'Input', text: 'Український текст' },
+      { label: 'Instructions', text: `Rules\n\n${actualNewlines}` },
     ]);
     expect(formatRequest(requests[1]).sections[1].text).toBe(literalEscapes);
     expect(formatRequest(requests[2]).sections.at(-1)).toEqual({
