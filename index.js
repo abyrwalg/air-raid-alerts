@@ -11,6 +11,9 @@ import processMessage from './helpers/processMessage.js';
 
 dotenv.config({ path: '.env.local' });
 
+const isTelegramEnabled =
+  (process.env.ENABLE_TELEGRAM || '').trim().toLowerCase() !== 'false';
+
 const channels = [];
 
 const app = express();
@@ -27,7 +30,7 @@ const CHANNELS = process.env.TG_CHANNELS
       .filter(Boolean)
   : [];
 
-if (CHANNELS.length === 0) {
+if (isTelegramEnabled && CHANNELS.length === 0) {
   console.warn(
     'No TG_CHANNELS found in .env.local — no channels will be monitored.',
   );
@@ -36,7 +39,6 @@ if (CHANNELS.length === 0) {
 const apiId = Number(process.env.TG_API_ID);
 const apiHash = process.env.TG_API_HASH;
 const existingSession = process.env.TG_SESSION || '';
-const session = new StringSession(existingSession);
 
 async function startListener(client) {
   console.log('Subscribing to channels...');
@@ -133,6 +135,7 @@ function ask(question) {
 
 async function initTelegram() {
   try {
+    const session = new StringSession(existingSession);
     const client = new TelegramClient(session, apiId, apiHash, {
       connectionRetries: 5,
       retryDelay: 2000,
@@ -200,5 +203,11 @@ app.listen(PORT, () => {
   console.log(`HTTP test server running on http://localhost:${PORT}`);
 });
 
-const client = await initTelegram();
-await startListener(client);
+if (isTelegramEnabled) {
+  const client = await initTelegram();
+  if (client) {
+    await startListener(client);
+  }
+} else {
+  console.log('Telegram is disabled; running in endpoint-only mode.');
+}

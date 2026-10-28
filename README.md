@@ -37,6 +37,7 @@ Configuration
 
 ```
 # Example .env.local
+ENABLE_TELEGRAM=true
 TG_CHANNELS=@channel1,@channel2
 TG_API_ID=123456
 TG_API_HASH=your_api_hash_here
@@ -48,6 +49,7 @@ TG_SESSION=""
 ```
 
 - `TG_CHANNELS`: comma-separated Telegram channel usernames (without spaces), e.g. `@alerts_channel`.
+- `ENABLE_TELEGRAM`: optional — defaults to `true`; set to `false` to run the HTTP endpoints without connecting to Telegram. Telegram credentials and channels are not required in this mode. HTTP endpoint behavior is unchanged.
 - `TG_API_ID` and `TG_API_HASH`: obtain from https://my.telegram.org
 - `OPENAI_API_KEY`: required for `openai.js` to call the OpenAI API
 - `HA_WEBHOOK_URL`: optional — if set, notifications will be sent to this Home Assistant webhook
@@ -75,6 +77,7 @@ npx nodemon index.js
 
 Behavior
 
+- Set `ENABLE_TELEGRAM=false` in `.env.local` to run in endpoint-only mode. The HTTP server and routes remain available, while Telegram authentication, channel monitoring, and polling are skipped. Endpoint-specific effects (such as `/tts` audio playback or `/hook` webhook requests) remain unchanged.
 - The app resolves channel usernames, subscribes to updates, and for each new message:
   - Applies `primaryFilter` and `excludeFilter` from `config.js` (Ukrainian/Russian-language regexes)
   - If matched, calls `generateResponse()` in `openai.js` to create a structured JSON analysis
