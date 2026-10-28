@@ -40,6 +40,43 @@ function prettyJson(text) {
   }
 }
 
+function textParts(content) {
+  if (typeof content === 'string') return [content];
+  if (!Array.isArray(content)) return [];
+  return content
+    .map((part) => (typeof part === 'string' ? part : part?.text))
+    .filter((text) => typeof text === 'string');
+}
+
+export function formatRequest(request) {
+  const raw =
+    request == null ? 'No payload captured.' : JSON.stringify(request, null, 2);
+  const sections = [];
+  const add = (label, text) => {
+    if (typeof text === 'string' && text.length) sections.push({ label, text });
+  };
+
+  add('Instructions', request?.instructions);
+  add('Input', request?.input);
+
+  const body = request?.body;
+  for (const message of body?.messages ?? []) {
+    const role = typeof message?.role === 'string' ? message.role : 'Message';
+    for (const text of textParts(message?.content)) add(role, text);
+  }
+  for (const item of body?.input ?? []) {
+    const role = typeof item?.role === 'string' ? item.role : 'Input';
+    for (const part of item?.content ?? [])
+      if (typeof part?.text === 'string') add(role, part.text);
+  }
+  for (const question of body?.questions ?? [])
+    add('Question instructions', question?.instructions);
+
+  if (!sections.length && request != null)
+    sections.push({ label: 'Request payload', text: raw });
+  return { sections, raw };
+}
+
 export function formatModelResponse(response) {
   const raw =
     response == null

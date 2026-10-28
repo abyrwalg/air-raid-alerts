@@ -404,13 +404,15 @@ h2 {
 .json-punctuation {
   color: var(--json-punctuation);
 }
-.raw-response > summary {
+.raw-response > summary,
+.raw-payload > summary {
   color: var(--muted);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 650;
 }
-.raw-response[open] > summary {
+.raw-response[open] > summary,
+.raw-payload[open] > summary {
   margin-bottom: 12px;
 }
 .copy {

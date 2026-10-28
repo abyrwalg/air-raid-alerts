@@ -1,5 +1,5 @@
 import { readApiResponse } from './logs-api.js';
-import { formatModelResponse } from './logs-format.js';
+import { formatModelResponse, formatRequest } from './logs-format.js';
 import { highlightJsonElement } from './logs-highlight.js';
 import { initializeTheme } from './logs-theme.js';
 
@@ -169,7 +169,18 @@ async function showDetail(id) {
       raw.append(summary, payload('Provider payload', responseView.raw));
       detail.append(raw);
     }
-    detail.append(payload('Request', item.request));
+    const requestView = formatRequest(item.request);
+    for (const section of requestView.sections)
+      detail.append(payload(section.label, section.text));
+    const rawRequest = document.createElement('details');
+    rawRequest.className = 'payload raw-payload';
+    const rawRequestSummary = document.createElement('summary');
+    rawRequestSummary.textContent = 'Raw request';
+    rawRequest.append(
+      rawRequestSummary,
+      payload('Request payload', requestView.raw),
+    );
+    detail.append(rawRequest);
     if (item.usage) detail.append(payload('Usage', item.usage));
     if (item.error) detail.append(payload('Error category', item.error));
     if (item.validationError)

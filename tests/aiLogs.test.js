@@ -14,7 +14,7 @@ import {
 } from '../aiLogs/runtime.js';
 import aiLogRoutes, { aiLogApiRouter } from '../aiLogs/routes.js';
 import { readApiResponse } from '../public/logs-api.js';
-import { formatModelResponse } from '../public/logs-format.js';
+import { formatModelResponse, formatRequest } from '../public/logs-format.js';
 import {
   highlightJsonElement,
   tokenizeJson,
@@ -183,6 +183,69 @@ describe('local AI log storage', () => {
     });
   });
 
+  it('formats logged requests as readable text while retaining raw JSON', () => {
+    const actualNewlines = 'First line\n\nSecond line';
+    const literalEscapes = String.raw`literal \\n stays literal`;
+    const requests = [
+      {
+        instructions: `Rules\n\n${actualNewlines}`,
+        input: 'Український текст',
+      },
+      {
+        body: {
+          messages: [
+            { role: 'system', content: `Rules\n${actualNewlines}` },
+            { role: 'user', content: literalEscapes },
+          ],
+        },
+      },
+      {
+        body: {
+          input: [
+            {
+              role: 'user',
+              content: [
+                { type: 'input_text', text: `Rules\n${actualNewlines}` },
+              ],
+            },
+          ],
+          questions: [{ instructions: 'Assess the message.' }],
+        },
+      },
+    ];
+
+    for (const request of requests) {
+      const view = formatRequest(request);
+      expect(view.raw).toBe(JSON.stringify(request, null, 2));
+      expect(view.sections.map(({ text }) => text).join('\n')).toContain(
+        actualNewlines,
+      );
+    }
+    expect(formatRequest(requests[0]).sections).toEqual([
+      { label: 'Instructions', text: `Rules\n\n${actualNewlines}` },
+      { label: 'Input', text: 'Український текст' },
+    ]);
+    expect(formatRequest(requests[1]).sections[1].text).toBe(literalEscapes);
+    expect(formatRequest(requests[2]).sections.at(-1)).toEqual({
+      label: 'Question instructions',
+      text: 'Assess the message.',
+    });
+  });
+
+  it('safely falls back to raw JSON for unknown and missing requests', () => {
+    const unknown = { opaque: '<img src=x onerror=alert(1)>' };
+    expect(formatRequest(unknown)).toEqual({
+      sections: [
+        { label: 'Request payload', text: JSON.stringify(unknown, null, 2) },
+      ],
+      raw: JSON.stringify(unknown, null, 2),
+    });
+    expect(formatRequest(null)).toEqual({
+      sections: [],
+      raw: 'No payload captured.',
+    });
+  });
+
   it('tokenizes all JSON value types and preserves nested Unicode JSON exactly', () => {
     const json =
       '{"ключ":"Значення","count":-2.5e2,"ok":true,"empty":null,"items":[false,{}]}';
@@ -293,7 +356,7 @@ describe('local AI log storage', () => {
     expect(systemRoot.dataset.theme).toBe('system');
   });
 
-  it('renders the formatted response and collapsed raw response above the request', async () => {
+  it('renders readable request sections and collapsed raw request and response', async () => {
     const viewerScript = await readFile(
       new URL('../public/logs.js', import.meta.url),
       'utf8',
@@ -302,10 +365,14 @@ describe('local AI log storage', () => {
     const rawPosition = viewerScript.indexOf(
       "summary.textContent = 'Raw response'",
     );
-    const requestPosition = viewerScript.indexOf("payload('Request'");
+    const requestPosition = viewerScript.indexOf('formatRequest(item.request)');
+    const rawRequestPosition = viewerScript.indexOf(
+      "rawRequestSummary.textContent = 'Raw request'",
+    );
     expect(responsePosition).toBeGreaterThan(-1);
     expect(responsePosition).toBeLessThan(rawPosition);
     expect(rawPosition).toBeLessThan(requestPosition);
+    expect(requestPosition).toBeLessThan(rawRequestPosition);
     expect(viewerScript).toContain("document.createElement('details')");
   });
 
