@@ -21,6 +21,11 @@ import {
 } from '../public/logs-highlight.js';
 import { initializeTheme } from '../public/logs-theme.js';
 
+const { mockRateLimits } = vi.hoisted(() => ({ mockRateLimits: vi.fn() }));
+vi.mock('../codex/service.js', () => ({
+  getCodexService: () => ({ rateLimits: mockRateLimits }),
+}));
+
 const directories = [];
 async function temporaryFile() {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'ai-logs-test-'));
@@ -483,6 +488,47 @@ describe('local AI log storage', () => {
       );
       expect(limitsWhenDisabled.status).toBe(404);
       expect(limitsWhenDisabled.headers.get('cache-control')).toBe('no-store');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  it('serves sanitized Codex limits to LAN logs clients without relaxing auth routes', async () => {
+    process.env.ANALYSIS_PROVIDER = 'codex';
+    mockRateLimits.mockResolvedValue([
+      {
+        label: 'Short-term',
+        usedPercent: 25,
+        windowDurationMins: 300,
+        resetsAt: '2026-11-01T00:00:00.000Z',
+      },
+    ]);
+    const filePath = await temporaryFile();
+    await initializeAiLogs({
+      config: { enabled: true, filePath, retentionDays: 30 },
+    });
+    const app = express();
+    app.use('/api/ai-logs', aiLogApiRouter);
+    const server = createServer(app);
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:${server.address().port}/api/ai-logs/codex-limits`,
+        { headers: { Host: `192.168.1.101:${server.address().port}` } },
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(await response.json()).toEqual({
+        windows: [
+          {
+            label: 'Short-term',
+            usedPercent: 25,
+            windowDurationMins: 300,
+            resetsAt: '2026-11-01T00:00:00.000Z',
+          },
+        ],
+      });
+      expect(mockRateLimits).toHaveBeenCalledOnce();
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }

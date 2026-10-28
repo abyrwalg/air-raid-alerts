@@ -1,7 +1,6 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { getAiLogStore } from './runtime.js';
-import { localAuthGuard } from '../helpers/localAuthGuard.js';
 
 const router = express.Router();
 export const aiLogApiRouter = express.Router();
@@ -171,7 +170,7 @@ aiLogApiRouter.get('/', (req, res) => {
   });
 });
 
-aiLogApiRouter.get('/codex-limits', localAuthGuard, async (req, res) => {
+aiLogApiRouter.get('/codex-limits', async (req, res) => {
   const store = getAiLogStore();
   if (!store)
     return res.status(503).json({ error: 'AI logs are not available.' });
