@@ -18,10 +18,16 @@ router.get('/', (req, res) => {
 // Test endpoint
 router.post('/test', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, context, ignoreContext } = req.body;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid text field.' });
+    }
+    if (context !== undefined && typeof context !== 'string') {
+      return res.status(400).json({ error: 'Invalid context field.' });
+    }
+    if (ignoreContext !== undefined && typeof ignoreContext !== 'boolean') {
+      return res.status(400).json({ error: 'Invalid ignoreContext field.' });
     }
 
     const matched =
@@ -36,7 +42,10 @@ router.post('/test', async (req, res) => {
       });
     }
 
-    const { triage, analysis } = await evaluateMessage(text);
+    const { triage, analysis } = await evaluateMessage(text, {
+      context,
+      ignoreContext,
+    });
 
     if (triage.status === 'rejected') {
       return res.json({

@@ -82,6 +82,8 @@ Behavior
 
 - Set `ENABLE_TELEGRAM=false` in `.env.local` to run in endpoint-only mode. The HTTP server and routes remain available, while Telegram authentication, channel monitoring, and polling are skipped. Endpoint-specific effects (such as `/tts` audio playback or `/hook` webhook requests) remain unchanged.
 - To manually test triage without starting Telegram, set `ENABLE_TELEGRAM=false`, `ENABLE_OPENAI_TRIAGE=true`, and a valid `OPENAI_API_KEY`, then submit a matching message to `/test`. Automated tests mock API and persistence; run them with `npm test -- --run` without launching `index.js`.
+- The `/test` endpoint accepts `text` plus optional `context` (a string) and `ignoreContext` (a boolean). By default it uses recent database messages as context. Supplying `context` replaces that history (an empty string means no context); setting `ignoreContext: true` sends no previous context and takes precedence over `context`. Test analyses continue to be saved as usual.
+- Example request body for a custom context: `{"text":"Missile reported near the region","context":"Earlier report: drone heading west"}`. Use `{"text":"Missile reported near the region","ignoreContext":true}` to analyze only the current message.
 - The app resolves channel usernames, subscribes to updates, and for each new message:
   - Applies `primaryFilter` and `excludeFilter` from `config.js` (Ukrainian/Russian-language regexes)
   - If matched and triage is enabled, calls `POST /v1/decisions` using `gpt-6-luna`; triage shares the threat-assessment rules and recent context used by full analysis

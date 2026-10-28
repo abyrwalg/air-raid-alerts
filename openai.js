@@ -126,10 +126,14 @@ export async function generateResponse(message) {
   });
 }
 
-export async function evaluateMessage(message) {
+export async function evaluateMessage(message, options = {}) {
   return enqueue(async () => {
     const messages = db.getCollection('messages');
-    const context = getRecentContext(messages);
+    const context = options.ignoreContext
+      ? ''
+      : options.context !== undefined
+        ? options.context
+        : getRecentContext(messages);
     let triage = {
       enabled: isTriageEnabled,
       status: 'disabled',

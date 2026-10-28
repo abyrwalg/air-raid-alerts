@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { post, create, insert } = vi.hoisted(() => ({
+const { post, create, insert, storedMessages } = vi.hoisted(() => ({
   post: vi.fn(),
   create: vi.fn(),
   insert: vi.fn(),
+  storedMessages: [],
 }));
 
 vi.mock('dotenv', () => ({ default: { config: vi.fn() } }));
@@ -21,7 +22,7 @@ vi.mock('../db.js', () => ({
       chain: () => ({
         where: () => ({
           simplesort: () => ({
-            limit: () => ({ data: () => [] }),
+            limit: () => ({ data: () => storedMessages }),
           }),
         }),
       }),
@@ -54,6 +55,10 @@ describe('Decisions API triage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    storedMessages.splice(0, storedMessages.length, {
+      input: 'stored previous alert',
+      createdAt: new Date(),
+    });
     create.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(analysis) } }],
     });
@@ -66,6 +71,56 @@ describe('Decisions API triage', () => {
     expect(result.triage).toMatchObject({ enabled: false, status: 'disabled' });
     expect(post).not.toHaveBeenCalled();
     expect(create).toHaveBeenCalledOnce();
+    expect(create.mock.calls[0][0].messages[1].content).toContain(
+      'stored previous alert',
+    );
+  });
+
+  it('uses explicitly supplied context instead of stored history for triage and analysis', async () => {
+    post.mockResolvedValue({
+      answers: [
+        { type: 'predicate', name: 'worth_full_analysis', probability: 0.5 },
+      ],
+    });
+    const { evaluateMessage } = await loadWithTriage(true);
+    await evaluateMessage('current alert', {
+      context: 'caller supplied context',
+    });
+
+    expect(post.mock.calls[0][1].body.input[0].content[0].text).toContain(
+      'caller supplied context',
+    );
+    expect(post.mock.calls[0][1].body.input[0].content[0].text).not.toContain(
+      'stored previous alert',
+    );
+    expect(create.mock.calls[0][0].messages[1].content).toContain(
+      'caller supplied context',
+    );
+    expect(create.mock.calls[0][0].messages[1].content).not.toContain(
+      'stored previous alert',
+    );
+    expect(insert).toHaveBeenCalledOnce();
+  });
+
+  it('supports empty context and gives ignoreContext precedence over supplied context', async () => {
+    const { evaluateMessage } = await loadWithTriage(false);
+    await evaluateMessage('first alert', { context: '' });
+    await evaluateMessage('second alert', {
+      context: 'must not be sent',
+      ignoreContext: true,
+    });
+
+    const firstContent = create.mock.calls[0][0].messages[1].content;
+    const secondContent = create.mock.calls[1][0].messages[1].content;
+    expect(firstContent).toContain(
+      'RECENT CONTEXT (previous messages):\n\n(none)',
+    );
+    expect(firstContent).not.toContain('stored previous alert');
+    expect(secondContent).toContain(
+      'RECENT CONTEXT (previous messages):\n\n(none)',
+    );
+    expect(secondContent).not.toContain('must not be sent');
+    expect(insert).toHaveBeenCalledTimes(2);
   });
 
   it('skips full analysis and persistence below 0.50', async () => {
