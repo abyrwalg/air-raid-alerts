@@ -14,6 +14,12 @@ import {
 } from '../aiLogs/runtime.js';
 import aiLogRoutes, { aiLogApiRouter } from '../aiLogs/routes.js';
 import { readApiResponse } from '../public/logs-api.js';
+import { formatModelResponse } from '../public/logs-format.js';
+import {
+  highlightJsonElement,
+  tokenizeJson,
+} from '../public/logs-highlight.js';
+import { initializeTheme } from '../public/logs-theme.js';
 
 const directories = [];
 async function temporaryFile() {
@@ -142,6 +148,167 @@ describe('local AI log storage', () => {
     ).rejects.toThrow('returned invalid JSON');
   });
 
+  it('formats OpenAI and Codex JSON output while retaining the original payload', () => {
+    const modelOutput = JSON.stringify({
+      summary: 'Загроза',
+      risk_level: 'medium',
+    });
+    for (const providerResponse of [
+      { text: modelOutput },
+      { choices: [{ message: { content: modelOutput } }] },
+    ]) {
+      const view = formatModelResponse(providerResponse);
+      expect(view.formatted).toBe(
+        JSON.stringify(JSON.parse(modelOutput), null, 2),
+      );
+      expect(view.raw).toBe(JSON.stringify(providerResponse, null, 2));
+      expect(view.raw).not.toBe(view.formatted);
+    }
+  });
+
+  it('formats structured triage responses, preserves plain text, and handles missing output', () => {
+    const triage = { answers: [{ type: 'predicate', probability: 0.8 }] };
+    expect(formatModelResponse(triage).formatted).toBe(
+      JSON.stringify(triage, null, 2),
+    );
+    expect(
+      formatModelResponse({ text: 'A plain response\nwith lines.' }).formatted,
+    ).toBe('A plain response\nwith lines.');
+    expect(formatModelResponse({ text: 'not valid {json' }).formatted).toBe(
+      'not valid {json',
+    );
+    expect(formatModelResponse(null)).toEqual({
+      formatted: '',
+      raw: 'No response captured.',
+    });
+  });
+
+  it('tokenizes all JSON value types and preserves nested Unicode JSON exactly', () => {
+    const json =
+      '{"ключ":"Значення","count":-2.5e2,"ok":true,"empty":null,"items":[false,{}]}';
+    const tokens = tokenizeJson(json);
+    expect(tokens.map(({ type }) => type)).toEqual(
+      expect.arrayContaining([
+        'key',
+        'string',
+        'number',
+        'boolean',
+        'null',
+        'punctuation',
+      ]),
+    );
+    expect(tokens.map(({ text }) => text).join('')).toBe(json);
+    expect(tokenizeJson('not { valid json')).toBeNull();
+  });
+
+  it('uses text nodes for highlighted content instead of interpreting HTML-like strings', () => {
+    const hostile = '{"message":"<img src=x onerror=alert(1)>"}';
+    const makeNode = (tagName = '#text') => ({
+      tagName,
+      children: [],
+      append(...nodes) {
+        this.children.push(...nodes);
+      },
+      set textContent(value) {
+        this.text = value;
+      },
+      get textContent() {
+        return (
+          this.text ?? this.children.map((child) => child.textContent).join('')
+        );
+      },
+    });
+    const document = {
+      createDocumentFragment: () => makeNode('#fragment'),
+      createTextNode: (text) => Object.assign(makeNode('#text'), { text }),
+      createElement: (tag) =>
+        Object.assign(makeNode(tag), { ownerDocument: document }),
+    };
+    const element = Object.assign(makeNode('pre'), { ownerDocument: document });
+    element.replaceChildren = (...children) => {
+      element.children = children;
+    };
+    expect(highlightJsonElement(element, hostile)).toBe(true);
+    expect(element.textContent).toBe(hostile);
+    const tags = [];
+    const visit = (node) => {
+      tags.push(node.tagName);
+      node.children.forEach(visit);
+    };
+    visit(element);
+    expect(tags).not.toContain('img');
+  });
+
+  it('applies and persists System/Light/Dark themes and tolerates unavailable storage', () => {
+    const createSelector = (initialValue = '') => ({
+      value: initialValue,
+      handlers: {},
+      addEventListener(name, handler) {
+        this.handlers[name] = handler;
+      },
+    });
+    const root = { dataset: {} };
+    const saved = { getItem: () => 'dark', setItem: vi.fn() };
+    const selector = createSelector();
+    initializeTheme(selector, { root, storage: saved, media: null });
+    expect(selector.value).toBe('dark');
+    expect(root.dataset.theme).toBe('dark');
+    selector.value = 'light';
+    selector.handlers.change();
+    expect(root.dataset.theme).toBe('light');
+    expect(saved.setItem).toHaveBeenCalledWith('aiLogsTheme', 'light');
+
+    const noStorageSelector = createSelector();
+    const noStorageRoot = { dataset: {} };
+    initializeTheme(noStorageSelector, {
+      root: noStorageRoot,
+      storage: {
+        getItem: () => {
+          throw new Error('blocked');
+        },
+        setItem: () => {
+          throw new Error('blocked');
+        },
+      },
+      media: null,
+    });
+    expect(noStorageRoot.dataset.theme).toBe('system');
+    noStorageSelector.value = 'dark';
+    expect(() => noStorageSelector.handlers.change()).not.toThrow();
+    expect(noStorageRoot.dataset.theme).toBe('dark');
+
+    const systemSelector = createSelector();
+    const systemRoot = { dataset: {} };
+    const mediaListener = vi.fn();
+    initializeTheme(systemSelector, {
+      root: systemRoot,
+      storage: { getItem: () => null },
+      media: {
+        addEventListener: (_event, listener) =>
+          mediaListener.mockImplementation(listener),
+      },
+    });
+    expect(systemRoot.dataset.theme).toBe('system');
+    mediaListener();
+    expect(systemRoot.dataset.theme).toBe('system');
+  });
+
+  it('renders the formatted response and collapsed raw response above the request', async () => {
+    const viewerScript = await readFile(
+      new URL('../public/logs.js', import.meta.url),
+      'utf8',
+    );
+    const responsePosition = viewerScript.indexOf("payload('Response'");
+    const rawPosition = viewerScript.indexOf(
+      "summary.textContent = 'Raw response'",
+    );
+    const requestPosition = viewerScript.indexOf("payload('Request'");
+    expect(responsePosition).toBeGreaterThan(-1);
+    expect(responsePosition).toBeLessThan(rawPosition);
+    expect(rawPosition).toBeLessThan(requestPosition);
+    expect(viewerScript).toContain("document.createElement('details')");
+  });
+
   it('keeps provider execution independent from log-storage failures', async () => {
     const errors = vi.fn();
     const recorder = new AiLogRecorder({
@@ -206,12 +373,27 @@ describe('local AI log storage', () => {
       'utf8',
     );
     expect(viewerHtml).toContain('type="module"');
+    expect(viewerHtml).toContain('/logs/theme-init.js');
+    expect(viewerHtml).toContain('id="theme"');
+    const viewerStyles = await readFile(
+      new URL('../public/logs.css', import.meta.url),
+      'utf8',
+    );
+    expect(viewerStyles).toContain(":root[data-theme='light']");
+    expect(viewerStyles).toContain('--json-key:');
+    expect(viewerStyles).toContain('--json-string:');
+    expect(viewerStyles).toContain('@media (prefers-color-scheme: light)');
     app.use('/logs', aiLogRoutes);
     app.use('/api/ai-logs', aiLogApiRouter);
     const server = createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     try {
       const base = `http://127.0.0.1:${server.address().port}`;
+      const highlightScript = await fetch(`${base}/logs/logs-highlight.js`);
+      expect(highlightScript.status).toBe(200);
+      expect(await highlightScript.text()).toContain('highlightJsonElement');
+      const themeScript = await fetch(`${base}/logs/logs-theme.js`);
+      expect(themeScript.status).toBe(200);
       const listResponse = await fetch(
         `${base}/api/ai-logs?provider=codex&search=searchable&from=${today}&to=${today}`,
       );

@@ -1,4 +1,7 @@
 import { readApiResponse } from './logs-api.js';
+import { formatModelResponse } from './logs-format.js';
+import { highlightJsonElement } from './logs-highlight.js';
+import { initializeTheme } from './logs-theme.js';
 
 const form = document.querySelector('#filters');
 const entries = document.querySelector('#entries');
@@ -88,7 +91,8 @@ function payload(title, value) {
       : typeof value === 'string'
         ? value
         : JSON.stringify(value, null, 2);
-  pre.textContent = text;
+  const highlighted = highlightJsonElement(pre, text);
+  if (!highlighted) pre.textContent = text;
   copy.addEventListener('click', async () => {
     try {
       if (navigator.clipboard?.writeText)
@@ -154,11 +158,18 @@ async function showDetail(id) {
       chip.textContent = value;
       meta.append(chip);
     }
-    detail.append(
-      meta,
-      payload('Request', item.request),
-      payload('Response', item.response),
-    );
+    detail.append(meta);
+    const responseView = formatModelResponse(item.response);
+    detail.append(payload('Response', responseView.formatted));
+    if (responseView.raw !== responseView.formatted) {
+      const raw = document.createElement('details');
+      raw.className = 'payload raw-response';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Raw response';
+      raw.append(summary, payload('Provider payload', responseView.raw));
+      detail.append(raw);
+    }
+    detail.append(payload('Request', item.request));
     if (item.usage) detail.append(payload('Usage', item.usage));
     if (item.error) detail.append(payload('Error category', item.error));
     if (item.validationError)
@@ -184,6 +195,7 @@ form.addEventListener('reset', () => {
   setTimeout(load);
 });
 document.querySelector('#refresh').addEventListener('click', load);
+initializeTheme(document.querySelector('#theme'));
 document.querySelector('#previous').addEventListener('click', () => {
   page--;
   load();

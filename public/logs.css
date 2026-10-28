@@ -6,16 +6,100 @@
     -apple-system,
     'Segoe UI',
     sans-serif;
-  color: #e8edf5;
-  background: #0b0f16;
+  color: var(--text);
+  background: var(--page);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  color-scheme: dark;
+  --page: #0b0f16;
   --panel: #121925;
+  --topbar: #0e141e;
+  --surface: #0b111a;
+  --surface-hover: #1a2635;
   --line: #263142;
+  --text: #e8edf5;
   --muted: #929eae;
+  --label: #c8d2df;
   --accent: #69b7ff;
-  --green: #65d6a1;
-  --red: #ff8585;
+  --accent-text: #07121d;
+  --secondary: #1b2635;
+  --secondary-text: #dce6f2;
+  --selected: #1a2635;
+  --badge: #263348;
+  --badge-success: #65d6a1;
+  --badge-error: #ff8585;
+  --error: #ff8585;
+  --meta-text: #c2cede;
+  --code-text: #d0d9e5;
+  --preview: #aab7c8;
+  --json-key: #82caff;
+  --json-string: #a5e3a6;
+  --json-number: #ffc779;
+  --json-boolean: #d7a5ff;
+  --json-null: #ffa0a0;
+  --json-punctuation: #a5b0c0;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --page: #f3f6fa;
+  --panel: #ffffff;
+  --topbar: #e9eff6;
+  --surface: #f7f9fc;
+  --surface-hover: #edf3fa;
+  --line: #cbd5e1;
+  --text: #172333;
+  --muted: #566579;
+  --label: #26384d;
+  --accent: #1765a9;
+  --accent-text: #ffffff;
+  --secondary: #e5ebf2;
+  --secondary-text: #233246;
+  --selected: #e5f1fd;
+  --badge: #e7edf4;
+  --badge-success: #176b3a;
+  --badge-error: #a32c36;
+  --error: #a32c36;
+  --meta-text: #34465c;
+  --code-text: #223247;
+  --preview: #536579;
+  --json-key: #0756a3;
+  --json-string: #176b2d;
+  --json-number: #835200;
+  --json-boolean: #7431a8;
+  --json-null: #a32727;
+  --json-punctuation: #566273;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    color-scheme: light;
+    --page: #f3f6fa;
+    --panel: #ffffff;
+    --topbar: #e9eff6;
+    --surface: #f7f9fc;
+    --surface-hover: #edf3fa;
+    --line: #cbd5e1;
+    --text: #172333;
+    --muted: #566579;
+    --label: #26384d;
+    --accent: #1765a9;
+    --accent-text: #ffffff;
+    --secondary: #e5ebf2;
+    --secondary-text: #233246;
+    --selected: #e5f1fd;
+    --badge: #e7edf4;
+    --badge-success: #176b3a;
+    --badge-error: #a32c36;
+    --error: #a32c36;
+    --meta-text: #34465c;
+    --code-text: #223247;
+    --preview: #536579;
+    --json-key: #0756a3;
+    --json-string: #176b2d;
+    --json-number: #835200;
+    --json-boolean: #7431a8;
+    --json-null: #a32727;
+    --json-punctuation: #566273;
+  }
 }
 * {
   box-sizing: border-box;
@@ -30,7 +114,32 @@ body {
   justify-content: space-between;
   padding: 25px clamp(18px, 4vw, 56px);
   border-bottom: 1px solid var(--line);
-  background: #0e141e;
+  background: var(--topbar);
+}
+.header-actions {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.theme-control {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.theme-control select {
+  min-width: 112px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
+.theme-control select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .topbar h1 {
   font-size: clamp(1.4rem, 3vw, 2rem);
@@ -53,7 +162,7 @@ body {
   background: var(--accent);
   border: 0;
   border-radius: 8px;
-  color: #07121d;
+  color: var(--accent-text);
   font-weight: 700;
   padding: 10px 15px;
   cursor: pointer;
@@ -68,9 +177,9 @@ select:focus-visible {
   outline-offset: 2px;
 }
 .secondary {
-  background: #1b2635;
+  background: var(--secondary);
   border: 1px solid var(--line);
-  color: #dce6f2;
+  color: var(--secondary-text);
 }
 main {
   padding: 22px clamp(14px, 3vw, 42px);
@@ -87,7 +196,7 @@ main {
 .filters label {
   display: grid;
   gap: 6px;
-  color: #c8d2df;
+  color: var(--label);
   font-size: 0.76rem;
   font-weight: 650;
 }
@@ -98,9 +207,9 @@ main {
   padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #0b111a;
+  background: var(--surface);
   color: inherit;
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 .filters button {
   align-self: end;
@@ -112,7 +221,7 @@ main {
   margin: 14px 2px;
 }
 .notice.error {
-  color: var(--red);
+  color: var(--error);
 }
 .workspace {
   height: calc(100vh - 270px);
@@ -161,7 +270,7 @@ h2 {
 }
 .entry:hover,
 .entry.selected {
-  background: #1a2635;
+  background: var(--selected);
 }
 .entry.selected {
   box-shadow: inset 3px 0 var(--accent);
@@ -186,14 +295,14 @@ h2 {
   border-radius: 99px;
   padding: 3px 8px;
   font-size: 0.68rem;
-  background: #263348;
+  background: var(--badge);
   text-transform: capitalize;
 }
 .badge.success {
-  color: var(--green);
+  color: var(--badge-success);
 }
 .badge.error {
-  color: var(--red);
+  color: var(--badge-error);
 }
 .pagination {
   display: flex;
@@ -241,12 +350,12 @@ h2 {
   margin: 17px 0 24px;
 }
 .meta {
-  background: #0b111a;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 7px 9px;
   font-size: 0.78rem;
-  color: #c2cede;
+  color: var(--meta-text);
 }
 .payload {
   margin: 18px 0;
@@ -264,11 +373,11 @@ h2 {
 .payload pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: #0b111a;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
-  color: #d0d9e5;
+  color: var(--code-text);
   font:
     0.81rem/1.55 ui-monospace,
     SFMono-Regular,
@@ -276,6 +385,33 @@ h2 {
     monospace;
   max-height: 50vh;
   overflow: auto;
+}
+.json-key {
+  color: var(--json-key);
+}
+.json-string {
+  color: var(--json-string);
+}
+.json-number {
+  color: var(--json-number);
+}
+.json-boolean {
+  color: var(--json-boolean);
+}
+.json-null {
+  color: var(--json-null);
+}
+.json-punctuation {
+  color: var(--json-punctuation);
+}
+.raw-response > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.raw-response[open] > summary {
+  margin-bottom: 12px;
 }
 .copy {
   padding: 6px 9px;
@@ -299,6 +435,14 @@ h2 {
 @media (max-width: 600px) {
   .topbar {
     padding: 18px 16px;
+  }
+  .header-actions {
+    align-items: center;
+    gap: 8px;
+  }
+  .theme-control select {
+    min-width: 94px;
+    padding: 8px 7px;
   }
   .topbar .muted {
     font-size: 0.76rem;

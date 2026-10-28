@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <title>AI request logs</title>
+    <script src="/logs/theme-init.js"></script>
     <link rel="stylesheet" href="/logs/style.css" />
     <link rel="stylesheet" href="/logs/preview.css" />
     <script src="/logs/app.js" type="module"></script>
@@ -16,7 +17,17 @@
         <h1>AI request logs</h1>
         <p class="muted">OpenAI and Codex inference history</p>
       </div>
-      <button id="refresh" class="button">Refresh</button>
+      <div class="header-actions">
+        <label class="theme-control" for="theme">
+          <span>Theme</span>
+          <select id="theme" aria-label="Color theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <button id="refresh" class="button">Refresh</button>
+      </div>
     </header>
     <main>
       <form id="filters" class="filters" aria-label="Filter request logs">

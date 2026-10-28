@@ -54,6 +54,18 @@ router.get('/app.js', (req, res) => res.sendFile(publicFile('logs.js')));
 router.get('/logs-api.js', (req, res) =>
   res.sendFile(publicFile('logs-api.js')),
 );
+router.get('/logs-format.js', (req, res) =>
+  res.sendFile(publicFile('logs-format.js')),
+);
+router.get('/logs-highlight.js', (req, res) =>
+  res.sendFile(publicFile('logs-highlight.js')),
+);
+router.get('/theme-init.js', (req, res) =>
+  res.sendFile(publicFile('logs-theme-init.js')),
+);
+router.get('/logs-theme.js', (req, res) =>
+  res.sendFile(publicFile('logs-theme.js')),
+);
 router.get('/style.css', (req, res) => res.sendFile(publicFile('logs.css')));
 router.get('/preview.css', (req, res) =>
   res.sendFile(publicFile('logs-preview.css')),
