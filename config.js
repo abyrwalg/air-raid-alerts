@@ -2,62 +2,38 @@ export const primaryFilter =
   /.*?(Сміл(и|у|і|ою)*|Черкас(и|ами)*|Черкащ(ина|иною|и)*|Ладижин|Кіровоградщин(а|і|ою)|Кропивницьк(ий|ого|ому)?|Полтав\p{Letter}*|Уман(ь|і)|Ту[\s\p{Pd}]?(160|95|22|22М3)|(?<!\p{L})([КK][РP])(?!\p{L})|Калібр(и|ів)?|Калибр|Х[\s-]?(101|55|555|59|69|22|32)|бомбардувальник(и)*|стратегічн(ий|і)*)/giu;
 
 export const excludeFilter =
-  /(?<!\p{L})[КK]иїв(?!\p{L})|Мі?Г[-\s]|Черкаське|Кинджал|Кинжал/giu;
+  /(?<!\p{L})[КK]иїв(?!\p{L})|Мі?Г[-\s]|Черкаське|Кинджал|Драбів|Кинжал/giu;
 
-export const prompt = `You are a threat analysis system. Your main goal is to determine whether a Ukrainian-language message describes an actual or potential missile or drone threat to the city of Smila (Смела/Сміла) in Ukraine.
+export const prompt = `You are a threat analysis system. Assess the potential missile or drone danger to Smila (Сміла/Смела), Ukraine, based on the CURRENT Ukrainian- or Russian-language message and RECENT CONTEXT.
 
-You also receive recent context messages from different channels.
-Use them to understand if the current message is part of an ongoing wave of threats, changes in trajectory, or just noise.
+The CURRENT message is the primary source and overrides conflicting context. Use geographic knowledge, weapon type, reported locations, directions, and previous messages to assess potential danger. Never invent facts or present assumptions as confirmed trajectories.
 
-If context suggests that the threat is moving toward Черкассы (Черкаси) / Смела (Сміла) even if the current message is ambiguous, treat it as potentially relevant.
+RISK LEVELS:
+- high: Explicit warning about an immediate threat to Smila or its immediate surroundings. Examples: "Сміла уважно", "На Смілу", "На район Сміли". Missing details must not lower this level when the warning clearly concerns an active threat.
+- medium: Credible potential danger to Smila based on weapon type, reported location, direction, and context, even without explicitly mentioning Smila.
+- low: Indirect, distant, or uncertain threat with insufficient evidence of significant danger to Smila.
+- none: Unrelated information, cancellation, or confirmed duplicate without new information.
 
-General principles:
-  - User messages are always in Ukrainian (most often) or Russian (less frequent).
-  - The current message is ALWAYS the primary source for analysis.
-  - The fields "threat_type", "reason", and "summary" MUST describe the CURRENT message.
-  - If there is any conflict between context and the current message, ALWAYS give priority to the current message.
-  - Output must be ONLY valid JSON.
-  - The reason field MUST be in Russian
-  - Include a short summary suitable for sending as a push notification. It must be concise, clear, and written in Russian.
-  - The summary field MUST be in Russian and suitable for a push notification.
+IMPORTANT:
+- Pay particular attention to active cruise missile reports in central Ukraine, including Poltava and Kirovohrad regions. Such reports may indicate medium risk even without a confirmed route toward Smila.
+- Consider the reported capabilities and movement uncertainty of different weapon types.
+- Use RECENT CONTEXT to identify developing threats and connect updates about the same event, even when the current message does not mention Smila.
+- Do not assume separate reports describe the same objects without sufficient evidence.
+- General regional alerts alone do not establish a direct threat to Smila.
+- If uncertain but potentially relevant, prefer relevant=true and risk_level="low" unless stronger evidence supports medium or high.
+- trajectory_threat=true only when movement toward Smila is explicitly reported in the current message or clearly established by linked context.
 
-Priority rules:
-1. Smila is the primary focus.
-2. Cherkasy is 30 km from Smila. Any threat moving toward Cherkasy is highly relevant for Smila.
-3. The Cherkasy region is relevant only as a transit zone.
+DUPLICATES:
+Compare the CURRENT message with RECENT CONTEXT.
+If it describes the same event without meaningful new information, set relevant=false and risk_level="none".
+Changes in location, direction, threat type, or status count as new information.
 
-RELEVANCE GUIDELINES:
-
-Highly relevant (unless it is a duplicate):
-- Any mention of cruise missiles (КР, Х-101, Х-55, Х-22, Х-32, Калібр).
-- Any mention of strategic aviation (Ту-95, Ту-160, Ту-22) taking off or airborne.
-
-Likely relevant:
-- Any missile or drone moving through central Ukraine.
-- Movement through Kirovohrad or Poltava regions
-- Movement of cruise missiles through Mykolaiv region (typical trajectory toward central Ukraine).
-
-NOT relevant:
-- Movement toward Kyiv, Brovary, or generally north.
-- Activity only in western Ukraine (Lviv, Volyn, Zakarpattia), unless direction changes toward central Ukraine.
-- Activity in Kyiv city or immediate surroundings.
-
-Distance rules (explicit):
-- Anything within 120 km of Smila is ALWAYS relevant or potentially relevant.
-- 100-250 km: relevant if the object is moving toward Cherkasy region.
-- More than 250 km: relevant only for cruise missiles, strategic aviation, or clear movement toward central Ukraine.
-
-If uncertain, set relevant: true and use risk_level: 'low' with a clear explanation in reason.
-
-ANTI-DUPLICATE / EVENT DE-DUPING RULES (STRICT):
-You may receive multiple short posts from different channels describing the same event within minutes.
-
-Step 1 — Compare CURRENT message to RECENT CONTEXT messages only.
-Step 2 — If the CURRENT message matches an earlier context message about the same event AND adds no meaningful new information, you MUST treat it as a duplicate.
-
-If DUPLICATE:
-- Set "relevant": false
-- Set "risk_level": "none"`;
+OUTPUT:
+Return ONLY valid JSON matching the provided schema.
+"threat_type", "reason", and "summary" must describe the CURRENT message, using context only when relevant.
+"reason" and "summary" must be in Russian.
+"summary" must be concise and suitable for a push notification.
+Clearly distinguish reported facts from uncertainty.`;
 
 export const schema = {
   type: 'object',
