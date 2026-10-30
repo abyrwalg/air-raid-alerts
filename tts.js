@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { EdgeTTS } from 'node-edge-tts';
+import synthesizeSpeech from './helpers/synthesizeSpeech.js';
 import portAudio from 'naudiodon';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -126,24 +126,33 @@ async function streamToSpeaker(filePath) {
 
 async function playTTS(text) {
   let outputPath;
+  let stage = 'synthesis';
 
   try {
-    const tts = new EdgeTTS({
-      voice: 'ru-RU-SvetlanaNeural',
-      lang: 'ru-RU',
-      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-    });
-
     const id = crypto.randomUUID();
     const chimePath = path.join(__dirname, 'chime.mp3');
     outputPath = path.join(__dirname, `output-${id}.mp3`);
 
-    await tts.ttsPromise(text, outputPath);
+    await synthesizeSpeech(text, outputPath);
 
+    stage = 'playback';
     await streamToSpeaker(chimePath);
     await streamToSpeaker(outputPath);
   } catch (error) {
-    console.error('TTS Synthesis Error:', error);
+    if (stage === 'synthesis') {
+      console.error('TTS synthesis failed; announcement skipped.', {
+        httpStatus: error?.httpStatus ?? null,
+        timedOut: error?.code === 'TTS_TIMEOUT',
+        hint:
+          error?.httpStatus === 403
+            ? 'Speech service denied the connection. Check service compatibility, system clock, and network access.'
+            : 'Speech synthesis is unavailable; the application will continue.',
+      });
+    } else {
+      console.error(
+        'TTS playback failed; announcement skipped. Check the audio device and FFmpeg.',
+      );
+    }
   } finally {
     if (outputPath) {
       try {

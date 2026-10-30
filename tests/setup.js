@@ -38,6 +38,21 @@ vi.mock('node:child_process', async (importOriginal) => {
     default: { ...actual.default, ...overrides },
   };
 });
+// Workers do not inherit Vitest's network/effect mocks. Require an explicit
+// fake (or an intentionally self-contained worker) in worker-specific tests.
+vi.mock('node:worker_threads', async (importOriginal) => {
+  const actual = await importOriginal();
+  class BlockedWorker {
+    constructor() {
+      throw new Error('Real workers are disabled in automated tests.');
+    }
+  }
+  return {
+    ...actual,
+    Worker: BlockedWorker,
+    default: { ...actual.default, Worker: BlockedWorker },
+  };
+});
 vi.mock('open', () => ({
   default: () => {
     throw new Error('Real browser launches are disabled in automated tests.');

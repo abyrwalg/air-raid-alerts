@@ -237,6 +237,34 @@ For a manual smoke test, disable Telegram, sign in through the local page, test 
 
 ## Important files and troubleshooting
 
+### Speech synthesis failures
+
+The existing Edge speech dependency is retained. Its legacy service may reject
+the WebSocket handshake with HTTP 403. Speech synthesis runs in a dedicated
+worker so an uncaught connection error cannot crash the main application. Each
+job has a 20-second synthesis deadline, including connection setup. Stalled
+workers are terminated before cleanup. Failed jobs skip audio, clean up their
+temporary file, and release the queue for later announcements. There are no
+automatic retries. A 403 can still prevent spoken announcements; this protection
+does not repair the remote service.
+
+Synthesis failures log only a status, timeout flag, and troubleshooting guidance,
+not message text, tokens, or raw SDK errors. Playback failures are identified
+separately. To inspect the installed client's handshake without starting the app,
+loading local environment files, sending speech text, or playing audio, run the
+standalone probe in [`scripts/diagnoseTts.js`](scripts/diagnoseTts.js):
+
+```powershell
+node scripts/diagnoseTts.js
+```
+
+This deliberately contacts Microsoft's speech service. It reports endpoint,
+dependency version, HTTP status, and server/local clock skew. A rejected or failed
+connection exits with status 1. Check service compatibility, system-clock
+synchronization, and network/VPN restrictions when the service refuses access.
+
+### Other troubleshooting
+
 - [`aiConfig.js`](aiConfig.js): stage-based environment parsing, migration errors, and credential requirements.
 - [`openai.js`](openai.js): provider-neutral serialized orchestration; filename retained for caller compatibility.
 - [`providers/openai.js`](providers/openai.js): OpenAI analysis and Decisions API adapter.

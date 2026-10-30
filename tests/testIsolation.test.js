@@ -4,6 +4,7 @@ import axios from 'axios';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { spawn } from 'node:child_process';
+import workerThreads, { Worker } from 'node:worker_threads';
 import open from 'open';
 import textToSpeech from '../tts.js';
 
@@ -61,9 +62,15 @@ describe('automated-test safety controls', () => {
     },
   );
 
-  it('blocks real subprocesses, browsers, and audio', () => {
+  it('blocks real subprocesses, workers, browsers, and audio', () => {
     expect(() => spawn('codex', ['--version'])).toThrow(
       'Real child processes are disabled',
+    );
+    expect(() => new Worker('throw new Error("test")', { eval: true })).toThrow(
+      'Real workers are disabled',
+    );
+    expect(() => new workerThreads.Worker('', { eval: true })).toThrow(
+      'Real workers are disabled',
     );
     expect(() => open('http://localhost:4000/auth/codex')).toThrow(
       'Real browser launches are disabled',

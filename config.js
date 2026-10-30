@@ -1,5 +1,5 @@
 export const primaryFilter =
-  /.*?(Сміл(и|у|і|ою)*|Черкас(и|ами)*|Черкащ(ина|иною|и)*|Ладижин|Кіровоградщин(а|і|ою|и|у)|Кропивницьк(ий|ого|ому)?|Полтав\p{Letter}*|Уман(ь|і)|Ту[\s\p{Pd}]?(160|95|22|22М3)|(?<!\p{L})([КK][РP])(?!\p{L})|Калібр(и|ів)?|Калибр|Х[\s-]?(101|55|555|59|69|22|32)|бомбардувальник(и)*|стратегічн(ий|і)*)/giu;
+  /.*?(Сміл(и|у|і|ою)*|Черкас(и|ами)*|Черкащ(ина|иною|и)*|Ладижин|Кіровоградщин(а|і|ою|и|у)|Кропивницьк(ий|ого|ому)?|Полтав\p{Letter}*|Уман(ь|і)|Ту[\s\p{Pd}]?(160|95|22|22М3)|(?<!\p{L})([КK][РP])(?!\p{L})|Калібр(и|ів)?|Калибр|Х[\s-]?(101|55|555|59|69|22|32)|бомбардувальник(и)*|стратегічн(ий|і)*|Бандерол\p{L}*|Дань[\s\p{Pd}]?\p{L}*)/giu;
 
 export const excludeFilter =
   /(?<!\p{L})[КK]иїв(?!\p{L})|Мі?Г[-\s]|Черкаське|Кинджал|Драбів|Кинжал/giu;
@@ -15,19 +15,16 @@ RISK LEVELS:
 - none: Unrelated information, cancellation, or confirmed duplicate without new information.
 
 IMPORTANT:
-- Pay particular attention to active cruise missile reports in central Ukraine, including Poltava and Kirovohrad regions. Such reports may indicate medium risk even without a confirmed route toward Smila.
+- Pay particular attention to active cruise missile (e.g. Х-59, Х-101, Х-22, Х-32, "Бандероль", "Дань", "Искандер-К" etc) reports in nearby regions, including Poltava, Kirovohrad, Sumy, Kherson and Mykolaiv regions. Such reports may indicate medium risk even without a confirmed route toward Smila.
 - Consider the reported capabilities and movement uncertainty of different weapon types.
 - Use RECENT CONTEXT to identify developing threats and connect updates about the same event, even when the current message does not mention Smila.
-- Do not assume separate reports describe the same objects without sufficient evidence.
 - General regional alerts alone do not establish a direct threat to Smila.
 - If uncertain but potentially relevant, classify it as low risk unless stronger evidence supports medium or high.
 - A trajectory toward Smila is established only when movement toward Smila is explicitly reported in the current message or clearly established by linked context.
 
 DUPLICATES:
 Compare the current message with recent context.
-If it describes the same event without meaningful new information, treat it as unrelated new threat information (none risk). Changes in location, direction, threat type, or status count as new information.
-
-`;
+If it describes the same event without meaningful new information, treat it as unrelated new threat information (none risk). Changes in location, direction, threat type, or status count as new information.`;
 
 export const triageThreshold = 0.5;
 export const triageTimeoutMs = 8000;
