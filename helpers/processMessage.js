@@ -24,7 +24,9 @@ export default async function processMessage(message, channel, source) {
       console.log(`MATCHED MESSAGE FROM ${channelName} (${source}):`);
       console.log(`${date}\n${text}`);
       console.log('Evaluating message...');
-      const { triage, analysis } = await evaluateMessage(text);
+      const username = channelName.replace(/^@+/, '');
+      const aiMessage = `Telegram channel: @${username}\n\n${text}`;
+      const { triage, analysis } = await evaluateMessage(aiMessage);
       console.log('Triage Result:', triage);
       if (triage.status === 'rejected') {
         console.log(

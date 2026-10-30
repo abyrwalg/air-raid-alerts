@@ -1,15 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { create, post, analyze, codexTriage, insert, construct } = vi.hoisted(
-  () => ({
-    create: vi.fn(),
-    post: vi.fn(),
-    analyze: vi.fn(),
-    codexTriage: vi.fn(),
-    insert: vi.fn(),
-    construct: vi.fn(),
-  }),
-);
+const {
+  create,
+  post,
+  analyze,
+  codexTriage,
+  insert,
+  construct,
+  storedMessages,
+} = vi.hoisted(() => ({
+  create: vi.fn(),
+  post: vi.fn(),
+  analyze: vi.fn(),
+  codexTriage: vi.fn(),
+  insert: vi.fn(),
+  construct: vi.fn(),
+  storedMessages: [],
+}));
 vi.mock('dotenv', () => ({ default: { config: vi.fn() } }));
 vi.mock('openai', () => ({
   default: class {
@@ -30,12 +37,7 @@ vi.mock('../db.js', () => ({
         where: () => ({
           simplesort: () => ({
             limit: () => ({
-              data: () => [
-                {
-                  input: 'database context',
-                  createdAt: new Date(),
-                },
-              ],
+              data: () => storedMessages,
             }),
           }),
         }),
@@ -72,6 +74,11 @@ async function load(
 describe('analysis provider routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    insert.mockReset();
+    storedMessages.splice(0, storedMessages.length, {
+      input: 'database context',
+      createdAt: new Date(),
+    });
     vi.spyOn(console, 'error').mockImplementation(() => {});
     analyze.mockResolvedValue(JSON.stringify(analysis));
     codexTriage.mockResolvedValue(0.8);
@@ -110,6 +117,69 @@ describe('analysis provider routing', () => {
     expect(create).not.toHaveBeenCalled();
     expect(analyze).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    ['openai', 'openai'],
+    ['openai', 'codex'],
+    ['codex', 'openai'],
+    ['codex', 'codex'],
+  ])(
+    'preserves channel attribution through %s analysis, %s triage, and later context',
+    async (provider, triageProvider) => {
+      insert.mockImplementation((message) => storedMessages.push(message));
+      const { evaluateMessage } = await load(
+        provider,
+        true,
+        'key',
+        triageProvider,
+      );
+      const first = 'Telegram channel: @first_source\n\nСміла уважно';
+      const second = 'Telegram channel: @second_source\n\nРакета змінила курс';
+
+      await evaluateMessage(first);
+      await evaluateMessage(second);
+
+      expect(insert).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ input: first }),
+      );
+      expect(insert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ input: second }),
+      );
+      const analysisInputs =
+        provider === 'codex'
+          ? analyze.mock.calls.map(([content]) => content)
+          : create.mock.calls.map(([request]) => request.messages[1].content);
+      const triageInputs =
+        triageProvider === 'codex'
+          ? codexTriage.mock.calls.map(([message, context]) => ({
+              message,
+              context,
+            }))
+          : post.mock.calls.map(([, request]) => ({
+              message: request.body.input[0].content[0].text,
+              context: request.body.input[0].content[0].text,
+            }));
+
+      expect(analysisInputs[0]).toContain(`CURRENT MESSAGE TO ANALYZE:\n\n`);
+      expect(analysisInputs[0]).toContain(first);
+      expect(triageInputs[0].message).toContain(first);
+      expect(analysisInputs[0]).toContain('database context');
+      expect(triageInputs[0].context).toContain('database context');
+      expect(analysisInputs[0]).not.toContain('@second_source');
+      expect(analysisInputs[1]).toContain(first);
+      expect(analysisInputs[1]).toContain(second);
+      expect(triageInputs[1].context).toContain(first);
+      expect(triageInputs[1].message).toContain(second);
+      expect(analysisInputs[1].indexOf(first)).toBeLessThan(
+        analysisInputs[1].indexOf('CURRENT MESSAGE TO ANALYZE:'),
+      );
+      expect(analysisInputs[1].indexOf(second)).toBeGreaterThan(
+        analysisInputs[1].indexOf('CURRENT MESSAGE TO ANALYZE:'),
+      );
+    },
+  );
 
   it('skips Codex when triage rejects', async () => {
     post.mockResolvedValue({

@@ -189,6 +189,8 @@ The existing development script references a different entry point; the explicit
 4. Triage errors, timeouts, and malformed answers fail open to full analysis. Full-analysis failures do not switch providers.
 5. Validate structured results before persistence or notifications. Relevant non-none analyses are saved; triage-only outputs and rejected reports are not saved.
 
+After filtering the original report body, Telegram reports are prefixed with a clearly labeled originating @username (for example, “Telegram channel: @threat_updates”) before being sent to either AI stage. This attribution stays in saved message text and later recent context, allowing the AI to distinguish sources while following developing threats. Older history and manual test messages without a channel label remain supported; no database migration is needed.
+
 Both triage providers use the policy and predicate validation in [`providers/triage.js`](providers/triage.js). Codex receives additional JSON-format instructions and a strict schema for the Decisions-compatible answer structure:
 
 ```json
